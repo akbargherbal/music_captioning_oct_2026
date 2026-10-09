@@ -98,7 +98,17 @@
       "status": "ok",
       "total_caption_seconds": 504.9,
       "completed_at": "2026-10-09T18:42:48"
+    },
+    "FADL_SHAKER/04.Fouk El Shouk.2000": {
+      "path": "FADL_SHAKER/04.Fouk El Shouk.2000.json",
+      "source_dir": "/content/Fadl Shaker.Full Discography.BY.RoMaNTiCPoET/04.Fouk El Shouk.2000",
+      "track_count": 6,
+      "failed_count": 0,
+      "skipped_count": 3,
+      "status": "ok",
+      "total_caption_seconds": 412.1,
+      "completed_at": "2026-10-09T18:49:43"
     }
   },
-  "updated_at": "2026-10-09T18:42:48"
+  "updated_at": "2026-10-09T18:49:43"
 }
