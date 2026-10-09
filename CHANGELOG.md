@@ -10,6 +10,9 @@
 - `src/resume.py`: manifest + resume helpers (atomic writes, done/pending
   detection), with CPU-only tests.
 - `--max-minutes`, `--max-albums`, `--list`, `--force`, `--no-push` controls.
+- Per-track failure isolation: a bad track is logged in `failed_tracks` and the
+  album is still saved (manifest status `partial`); `--retry-failed` re-captions
+  only the failed tracks. Only an all-tracks-failed album stays pending.
 
 ## [1.0.0] - 2026-10-09
 

@@ -136,6 +136,11 @@ lost if you get disconnected. Flags: `--list`, `--force` (redo), `--max-albums N
 `--max-minutes N` (stop cleanly between albums), `--no-push`. Audio is cached in
 `work/` (gitignored) and re-downloaded only when missing.
 
+**Failures are isolated per track.** If one track errors, it is recorded in the
+album JSON under `failed_tracks` and the manifest is marked `partial`; the rest
+of the album is still written and pushed. `--retry-failed` re-captions **only**
+the failed tracks. A single bad track never discards an album's work.
+
 ## Benchmarking
 
 Time captioning for one file or a whole album (model loaded once, reused):

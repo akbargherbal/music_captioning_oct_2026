@@ -12,6 +12,11 @@ On a fresh runtime, run the same command: it pulls, reads the manifest, and
 skips every album already pushed. Nothing is redone — only the in-flight album
 is lost if the runtime dies.
 
+A single bad track does not sink its album: the track is logged under
+`failed_tracks`, the rest of the album is written/committed, and the album is
+marked `partial` in the manifest. Re-run with `--retry-failed` to re-caption
+only the failed tracks. Only if *every* track fails is the album left pending.
+
 Usage:
     python scripts/batch.py --artist ELISSA --list          # show pending
     python scripts/batch.py --artist ELISSA --max-minutes 90
@@ -21,6 +26,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import json
 import subprocess
 import sys
 import time
@@ -32,12 +38,14 @@ sys.path.insert(0, str(REPO_ROOT))
 from src.resume import (  # noqa: E402
     album_key,
     album_output_path,
+    album_status,
     atomic_write_json,
     group_local_tracks,
     group_tracks,
     is_done,
     load_manifest,
     pending_albums,
+    run_tracks,
 )
 from src.tags import CATEGORIES  # noqa: E402
 
@@ -88,21 +96,29 @@ def git_checkpoint(repo: Path, message: str, push: bool, retries: int = 3) -> No
     print("  WARNING: could not push; work is committed locally only")
 
 
-def process_album(captioner, entry: dict, workdir: Path, outputs: Path) -> dict:
-    """Download + caption one album, write its JSON, return the album record."""
+def process_album(
+    captioner,
+    entry: dict,
+    workdir: Path,
+    outputs: Path,
+    existing: dict | None = None,
+    retry_only_failed: bool = False,
+) -> dict:
+    """Caption one album, **isolating per-track failures**.
+
+    A track that raises is recorded under ``failed_tracks`` and skipped; the
+    remaining tracks are still written and committed. Only if *every* track
+    fails does the album count as failed — in that case nothing is written, so
+    the album stays pending and is retried next run.
+    """
     from src.captioner import audio_duration
     from src.captioner_hf import caption_and_tag
     from src.tags import merge_tags, to_suno
 
     artist, album = entry["artist"], entry["album"]
     album_dir = workdir / artist / album
-    track_results: list[dict] = []
-    total_audio = 0.0
-    total_caption = 0.0
 
-    for track in entry["tracks"]:
-        filename = track["filename"]
-        uri = track["uri"]
+    def caption_one(filename: str, uri: str) -> dict:
         if uri.startswith("gs://"):
             local = album_dir / filename
             download_track(uri, local)
@@ -113,9 +129,7 @@ def process_album(captioner, entry: dict, workdir: Path, outputs: Path) -> dict:
         result = caption_and_tag(captioner, local)
         caption_s = time.time() - t0
         result.pop("chunk_captions", None)
-        total_audio += duration
-        total_caption += caption_s
-        track_results.append({
+        return {
             "file": filename,
             "duration_s": round(duration, 1),
             "caption_seconds": round(caption_s, 1),
@@ -124,9 +138,20 @@ def process_album(captioner, entry: dict, workdir: Path, outputs: Path) -> dict:
             "production": result["production"],
             "caption": result["caption"],
             "suno_prompt": result["suno_prompt"],
-        })
-        print(f"    {filename}: {caption_s:.1f}s", flush=True)
+        }
 
+    track_results, failed = run_tracks(
+        entry["tracks"], caption_one,
+        existing=existing, retry_only_failed=retry_only_failed,
+        echo=lambda m: print(f"    {m}", flush=True),
+    )
+
+    if not track_results:
+        first = f"; first error: {failed[0]['error']}" if failed else ""
+        raise RuntimeError(f"all {len(entry['tracks'])} tracks failed{first}")
+
+    total_audio = sum(t["duration_s"] for t in track_results)
+    total_caption = sum(t["caption_seconds"] for t in track_results)
     merged = merge_tags([
         {cat: t[cat] for cat in CATEGORIES} for t in track_results
     ])
@@ -135,7 +160,9 @@ def process_album(captioner, entry: dict, workdir: Path, outputs: Path) -> dict:
         "album": album,
         "source_dir": entry["source_dir"],
         "generated_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "status": "partial" if failed else "ok",
         "track_count": len(track_results),
+        "failed_count": len(failed),
         "total_audio_seconds": round(total_audio, 1),
         "total_caption_seconds": round(total_caption, 1),
         "instruments": merged["instruments"],
@@ -143,6 +170,7 @@ def process_album(captioner, entry: dict, workdir: Path, outputs: Path) -> dict:
         "production": merged["production"],
         "suno_prompt": to_suno(merged),
         "tracks": track_results,
+        "failed_tracks": failed,
     }
     atomic_write_json(album_output_path(outputs, artist, album), album_obj)
     return album_obj
@@ -164,6 +192,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--max-albums", type=int, default=0, help="cap albums this run (0 = no cap)")
     parser.add_argument("--no-push", action="store_true", help="commit but do not push")
     parser.add_argument("--force", action="store_true", help="redo albums already in the manifest")
+    parser.add_argument("--retry-failed", action="store_true",
+                        help="re-queue albums marked partial (some tracks failed) and "
+                             "re-caption only the failed tracks")
     parser.add_argument("--list", action="store_true", help="show pending albums and exit")
     args = parser.parse_args(argv)
 
@@ -183,7 +214,8 @@ def main(argv: list[str] | None = None) -> int:
         albums = {k: v for k, v in albums.items() if v["artist"] in wanted}
 
     manifest = load_manifest(args.manifest)
-    pending = pending_albums(albums, manifest, args.outputs, force=args.force)
+    pending = pending_albums(albums, manifest, args.outputs,
+                             force=args.force, retry_failed=args.retry_failed)
     done = [k for k in albums if k not in pending]
 
     print(f"Albums found: {len(albums)} | done: {len(done)} | pending: {len(pending)}")
@@ -191,7 +223,9 @@ def main(argv: list[str] | None = None) -> int:
         for key in pending:
             print(f"  PENDING  {key}  ({len(albums[key]['tracks'])} tracks)")
         for key in done:
-            print(f"  done     {key}")
+            st = album_status(key, manifest)
+            note = f"  [{st}]" if st and st != "ok" else ""
+            print(f"  done     {key}{note}")
         return 0
     if not pending:
         print("Nothing to do — all albums already captured.")
@@ -220,9 +254,24 @@ def main(argv: list[str] | None = None) -> int:
 
         entry = albums[key]
         print(f"\n[{i}/{len(pending)}] {key} ({len(entry['tracks'])} tracks)", flush=True)
+
+        prior_obj = None
+        retry_only = False
+        if args.retry_failed:
+            prior_path = album_output_path(args.outputs, entry["artist"], entry["album"])
+            if prior_path.exists():
+                try:
+                    prior_obj = json.loads(prior_path.read_text(encoding="utf-8"))
+                    retry_only = prior_obj.get("status") != "ok"
+                except (json.JSONDecodeError, OSError):
+                    prior_obj = None
+
         album_t0 = time.time()
         try:
-            album_obj = process_album(captioner, entry, args.workdir, args.outputs)
+            album_obj = process_album(
+                captioner, entry, args.workdir, args.outputs,
+                existing=prior_obj, retry_only_failed=retry_only,
+            )
         except Exception as exc:  # noqa: BLE001 - keep going
             print(f"  ERROR on {key}: {type(exc).__name__}: {exc}")
             continue
@@ -231,6 +280,8 @@ def main(argv: list[str] | None = None) -> int:
             "path": f"{entry['artist']}/{entry['album']}.json",
             "source_dir": entry["source_dir"],
             "track_count": album_obj["track_count"],
+            "failed_count": album_obj.get("failed_count", 0),
+            "status": album_obj.get("status", "ok"),
             "total_caption_seconds": album_obj["total_caption_seconds"],
             "completed_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
         }
@@ -240,18 +291,33 @@ def main(argv: list[str] | None = None) -> int:
         album_min = (time.time() - album_t0) / 60.0
         durations.append(album_min)
         completed += 1
+        n_failed = album_obj.get("failed_count", 0)
         print(f"  done in {album_min:.1f} min "
               f"({album_obj['total_caption_seconds']}s captioning)", flush=True)
+        if n_failed:
+            print(f"  WARNING: {n_failed} track(s) failed; re-run with "
+                  f"--retry-failed to retry just them.", flush=True)
         git_checkpoint(
             REPO_ROOT,
-            f"captions({key}): {album_obj['track_count']} tracks "
-            f"({len(done) + completed}/{len(albums)})",
+            f"captions({key}): {album_obj['track_count']} tracks"
+            + (f", {n_failed} failed" if n_failed else "")
+            + f" ({len(done) + completed}/{len(albums)})",
             push=push,
         )
 
     remaining = len(pending) - completed
     print(f"\nRun complete: {completed} album(s) this session, ~{remaining} still pending.")
     print(f"Total wall time: {(time.time() - started) / 60.0:.1f} min")
+
+    failed_albums = {
+        k: v for k, v in (manifest.get("albums") or {}).items()
+        if isinstance(v, dict) and v.get("status", "ok") != "ok"
+    }
+    if failed_albums:
+        print(f"\n{len(failed_albums)} album(s) have failed tracks "
+              f"(re-run with --retry-failed):")
+        for k, v in sorted(failed_albums.items()):
+            print(f"  {k}: {v.get('failed_count', '?')} failed track(s)")
     return 0
 
 

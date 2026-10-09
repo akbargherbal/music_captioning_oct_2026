@@ -6,6 +6,7 @@ from pathlib import Path
 from src.resume import (
     album_key,
     album_output_path,
+    album_status,
     atomic_write_json,
     atomic_write_text,
     group_local_tracks,
@@ -14,6 +15,7 @@ from src.resume import (
     load_manifest,
     parse_gs_track,
     pending_albums,
+    run_tracks,
 )
 
 ROOT = "gs://bucket/DISCOGRAPHY"
@@ -97,6 +99,88 @@ def test_pending_albums_and_force(tmp_path: Path):
     manifest = {"albums": {"ELISSA/A": {"path": "ELISSA/A.json"}}}
     assert pending_albums(albums, manifest, outputs) == ["ELISSA/B"]
     assert pending_albums(albums, manifest, outputs, force=True) == ["ELISSA/A", "ELISSA/B"]
+
+
+def test_album_status_default_and_partial():
+    manifest = {
+        "albums": {
+            "ELISSA/A": {"path": "ELISSA/A.json"},  # no status -> "ok"
+            "ELISSA/B": {"path": "ELISSA/B.json", "status": "partial", "failed_count": 2},
+        }
+    }
+    assert album_status("ELISSA/A", manifest) == "ok"
+    assert album_status("ELISSA/B", manifest) == "partial"
+    assert album_status("ELISSA/missing", manifest) is None
+
+
+def test_pending_albums_retry_failed(tmp_path: Path):
+    outputs = tmp_path / "outputs"
+    (outputs / "ELISSA").mkdir(parents=True)
+    (outputs / "ELISSA" / "A.json").write_text("{}")
+    (outputs / "ELISSA" / "B.json").write_text("{}")
+    albums = {
+        "ELISSA/A": {"artist": "ELISSA", "album": "A", "tracks": []},
+        "ELISSA/B": {"artist": "ELISSA", "album": "B", "tracks": []},
+    }
+    manifest = {"albums": {
+        "ELISSA/A": {"path": "ELISSA/A.json", "status": "ok"},
+        "ELISSA/B": {"path": "ELISSA/B.json", "status": "partial", "failed_count": 1},
+    }}
+    assert pending_albums(albums, manifest, outputs) == []
+    assert pending_albums(albums, manifest, outputs, retry_failed=True) == ["ELISSA/B"]
+
+
+def test_run_tracks_isolates_a_failure():
+    tracks = [
+        {"filename": "a.mp3", "uri": "a"},
+        {"filename": "bad.mp3", "uri": "bad"},
+        {"filename": "c.mp3", "uri": "c"},
+    ]
+
+    def caption_one(filename, uri):
+        if filename == "bad.mp3":
+            raise ValueError("boom")
+        return {"file": filename, "caption_seconds": 1.0}
+
+    results, failed = run_tracks(tracks, caption_one)
+    assert [r["file"] for r in results] == ["a.mp3", "c.mp3"]
+    assert failed == [{"file": "bad.mp3", "error": "ValueError: boom"}]
+
+
+def test_run_tracks_retry_only_failed_keeps_successes():
+    existing = {
+        "status": "partial",
+        "tracks": [
+            {"file": "a.mp3", "caption_seconds": 1.0},
+            {"file": "c.mp3", "caption_seconds": 2.0},
+        ],
+        "failed_tracks": [{"file": "bad.mp3", "error": "x"}],
+    }
+    tracks = [{"filename": n, "uri": n} for n in ["a.mp3", "bad.mp3", "c.mp3"]]
+    calls: list[str] = []
+
+    def caption_one(filename, uri):
+        calls.append(filename)
+        return {"file": filename, "caption_seconds": 9.0}
+
+    results, failed = run_tracks(
+        tracks, caption_one, existing=existing, retry_only_failed=True
+    )
+    assert calls == ["bad.mp3"]  # only the failed track is re-run
+    assert failed == []
+    assert [r["file"] for r in results] == ["a.mp3", "bad.mp3", "c.mp3"]
+    assert results[0]["caption_seconds"] == 1.0  # prior success preserved
+    assert results[1]["caption_seconds"] == 9.0  # retried track
+
+
+def test_run_tracks_echo_reports_progress():
+    msgs: list[str] = []
+    run_tracks(
+        [{"filename": "a.mp3", "uri": "a"}],
+        lambda f, u: {"file": f, "caption_seconds": 3.0},
+        echo=msgs.append,
+    )
+    assert msgs == ["a.mp3: 3.0s"]
 
 
 def test_group_local_tracks_artist_dir(tmp_path: Path):

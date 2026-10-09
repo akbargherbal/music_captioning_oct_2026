@@ -187,6 +187,9 @@ Alternative backend (llama.cpp GGUF):
   GCS, so only the in-flight album is ever lost.
 - Writes must be atomic (temp file + `os.replace`) so a killed session cannot
   leave a corrupt result.
+- Isolate per-track failures: log the track, keep the rest of the album, mark
+  the manifest `partial`, and re-run only the failures via `--retry-failed`.
+  Never let one bad track discard an album's work.
 
 ## Guardrails
 

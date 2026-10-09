@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+from typing import Callable
 
 AUDIO_SUFFIXES = {".mp3", ".wav", ".flac", ".m4a", ".ogg"}
 MANIFEST_VERSION = 1
@@ -138,18 +139,73 @@ def is_done(key: str, manifest: dict[str, object], outputs_root: Path | str) -> 
     return (Path(outputs_root) / rel).exists()
 
 
+def album_status(key: str, manifest: dict[str, object]) -> str | None:
+    """Manifest status for an album: ``"ok"``, ``"partial"``, ``"error"`` or None."""
+    entry = (manifest.get("albums") or {}).get(key)  # type: ignore[union-attr]
+    if isinstance(entry, dict):
+        return entry.get("status", "ok")
+    return None
+
+
 def pending_albums(
     albums: dict[str, dict[str, object]],
     manifest: dict[str, object],
     outputs_root: Path | str,
     force: bool = False,
+    retry_failed: bool = False,
 ) -> list[str]:
-    """Album keys still to process, in stable order."""
-    return [
-        key
-        for key in sorted(albums)
-        if force or not is_done(key, manifest, outputs_root)
-    ]
+    """Album keys still to process, in stable order.
+
+    ``force`` redoes everything. ``retry_failed`` additionally re-queues albums
+    whose manifest status is not ``"ok"`` (they had failed tracks).
+    """
+    out: list[str] = []
+    for key in sorted(albums):
+        if force or not is_done(key, manifest, outputs_root):
+            out.append(key)
+        elif retry_failed and album_status(key, manifest) != "ok":
+            out.append(key)
+    return out
+
+
+def run_tracks(
+    tracks: list[dict],
+    caption_one: Callable[[str, str], dict],
+    existing: dict | None = None,
+    retry_only_failed: bool = False,
+    echo: Callable[[str], None] | None = None,
+) -> tuple[list[dict], list[dict]]:
+    """Caption tracks one by one, isolating per-track failures.
+
+    ``caption_one(filename, uri)`` returns a per-track result (or raises).
+    A raising track is recorded as ``{"file", "error"}`` and skipped, so one
+    bad track never sinks the album.
+
+    With ``retry_only_failed``, tracks that already succeeded in ``existing``
+    are kept as-is and only previously-failed tracks are re-run.
+    """
+    prior = existing or {}
+    prior_tracks = {t["file"]: t for t in prior.get("tracks", [])}
+    failed_files = {f.get("file") for f in prior.get("failed_tracks", [])}
+    results: list[dict] = []
+    failed: list[dict] = []
+    for track in tracks:
+        filename = track["filename"]
+        if retry_only_failed and filename in prior_tracks and filename not in failed_files:
+            results.append(prior_tracks[filename])
+            continue
+        try:
+            result = caption_one(filename, track["uri"])
+        except Exception as exc:  # noqa: BLE001 - isolate a bad track
+            msg = f"{type(exc).__name__}: {exc}"
+            if echo:
+                echo(f"{filename}: FAILED - {msg}")
+            failed.append({"file": filename, "error": msg})
+            continue
+        if echo:
+            echo(f"{filename}: {result.get('caption_seconds', 0):.1f}s")
+        results.append(result)
+    return results, failed
 
 
 def atomic_write_text(path: Path | str, text: str) -> None:
