@@ -46,7 +46,7 @@ hf_hub_download("ACE-Step/acestep-captioner", "spk_dict.pt", local_dir="models/A
 PY
 
 # 3. Run the pipeline on a track (upload one, or point at a path).
-python scripts/demo.py /content/elisa_maktooba_leek.mp3
+python scripts/demo.py /content/elisa_maktooba_leek.mp3 --out outputs/elisa.json
 
 # 4. Optional: CPU-only tests, no model or GPU needed.
 python -m pytest tests/ -q
@@ -97,6 +97,10 @@ Resulting tags and Suno prompt:
 <!-- EXAMPLE_END -->
 
 ## Output format
+
+By default `scripts/demo.py` **only prints**; nothing is written to disk. Pass
+`--out PATH` (e.g. `--out outputs/elisa.json`) to also save the JSON — parent
+directories are created and `outputs/` is gitignored.
 
 `scripts/demo.py --json` prints:
 

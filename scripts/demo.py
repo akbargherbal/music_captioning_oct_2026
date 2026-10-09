@@ -41,6 +41,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--json", action="store_true", help="print only the JSON result"
     )
+    parser.add_argument(
+        "-o", "--out", type=Path, default=None,
+        help="write the JSON result to this path (parent dirs are created)",
+    )
     args = parser.parse_args(argv)
 
     if args.backend == "hf":
@@ -56,6 +60,13 @@ def main(argv: list[str] | None = None) -> int:
 
     result = caption_and_tag(captioner, args.audio)
     result.pop("chunk_captions", None)
+
+    if args.out is not None:
+        args.out.parent.mkdir(parents=True, exist_ok=True)
+        args.out.write_text(
+            json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        print(f"Saved: {args.out}", file=sys.stderr)
 
     if args.json:
         print(json.dumps(result, ensure_ascii=False, indent=2))

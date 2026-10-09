@@ -10,6 +10,9 @@ audio/
 *.m4a
 *.ogg
 
+# Generated caption JSON (regenerate with scripts/demo.py --out)
+outputs/
+
 # Build artifacts
 llama.cpp/
 build/
