@@ -48,7 +48,17 @@
       "status": "ok",
       "total_caption_seconds": 607.6,
       "completed_at": "2026-10-09T17:48:42"
+    },
+    "ELISSA/Elissa - 2009 Tesada'a Bemeen": {
+      "path": "ELISSA/Elissa - 2009 Tesada'a Bemeen.json",
+      "source_dir": "/content/ELISSA/Elissa - 2009 Tesada'a Bemeen",
+      "track_count": 13,
+      "failed_count": 0,
+      "skipped_count": 0,
+      "status": "ok",
+      "total_caption_seconds": 729.1,
+      "completed_at": "2026-10-09T18:00:54"
     }
   },
-  "updated_at": "2026-10-09T17:48:42"
+  "updated_at": "2026-10-09T18:00:54"
 }
