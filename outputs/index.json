@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "albums": {
+    "ELISSA/Elissa - 1998 Baddy Doub": {
+      "path": "ELISSA/Elissa - 1998 Baddy Doub.json",
+      "source_dir": "/content/ELISSA/Elissa - 1998 Baddy Doub",
+      "track_count": 10,
+      "total_caption_seconds": 526.7,
+      "completed_at": "2026-10-09T16:47:02"
+    }
+  },
+  "updated_at": "2026-10-09T16:47:02"
+}
