@@ -19,6 +19,8 @@
 - `--min-bitrate-kbps` (default 128; `0` disables): low-quality tracks are
   skipped the same way. `--artist-name` overrides the artist label for a local
   `--root` (default: the root directory name).
+- `scripts/supervise.py`: restarts the batch after any non-zero exit (including
+  SIGKILL) so a killed process resumes instead of stopping. Run it detached.
 
 ## [1.0.0] - 2026-10-09
 

@@ -196,6 +196,10 @@ Alternative backend (llama.cpp GGUF):
 - Skip low-quality tracks below `--min-bitrate-kbps` (default 128; `0`
   disables) the same way — never caption 32/64 kbps files. For a local root,
   `--artist-name` overrides the artist label (default: the root dir name).
+- Unattended/long runs must go through `scripts/supervise.py`, detached
+  (`setsid nohup ... &`). The batch's own handlers cannot catch the whole
+  process being killed (OOM/native crash/session reap); the supervisor restarts
+  the batch after any non-zero exit so the run resumes instead of stopping.
 
 ## Guardrails
 

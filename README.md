@@ -150,6 +150,23 @@ recordings or long mixes. Set `0` to disable the cap.
 local `--root` whose directory name isn't the artist label you want, pass
 `--artist-name NAME`.
 
+### Surviving kills (use this for long runs)
+
+`batch.py` isolates per-track/per-album *failures*, but it cannot survive its own
+process being killed (host OOM, a native crash, or the session reaping the job) —
+nothing inside a dead process can log or continue. Run it under the supervisor,
+detached, so a kill simply resumes:
+
+```bash
+setsid nohup python3 -u scripts/supervise.py --log /content/batch.log -- \
+  --root "/content/Fadl Shaker.Full Discography.BY.RoMaNTiCPoET" \
+  --artist-name FADL_SHAKER --min-bitrate-kbps 128 --max-track-seconds 480 \
+  --max-minutes 0 >/content/supervisor.out 2>&1 &
+```
+
+It restarts the batch after any non-zero exit (including SIGKILL), and only
+gives up after repeated *quick* failures. Watch `/content/batch.log`.
+
 ## Benchmarking
 
 Time captioning for one file or a whole album (model loaded once, reused):
