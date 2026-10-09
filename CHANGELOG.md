@@ -1,5 +1,16 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- `scripts/batch.py`: resumable discography runner. After every album it writes
+  `outputs/<ARTIST>/<album>.json`, updates `outputs/index.json`, and commits +
+  pushes — so a fresh (ephemeral) Colab runtime resumes where it stopped.
+- `src/resume.py`: manifest + resume helpers (atomic writes, done/pending
+  detection), with CPU-only tests.
+- `--max-minutes`, `--max-albums`, `--list`, `--force`, `--no-push` controls.
+
 ## [1.0.0] - 2026-10-09
 
 First stable release.

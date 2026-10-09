@@ -69,6 +69,7 @@ Rejected options (don't switch to them silently):
 ├── src/
 │   ├── captioner_hf.py             # transformers 4-bit backend (current)
 │   ├── captioner.py                # llama.cpp subprocess wrapper (alternative)
+│   ├── resume.py                   # manifest + resume helpers
 │   ├── tags.py                     # lexicon + to_suno()
 │   └── lexicon.json                # instruments / vocals / production terms
 ├── tests/
@@ -77,6 +78,7 @@ Rejected options (don't switch to them silently):
 ├── scripts/
 │   ├── demo.py                     # end-to-end CLI
 │   ├── benchmark.py                # per-track timing + VRAM benchmark
+│   ├── batch.py                    # resumable discography runner
 │   └── build_llamacpp.sh           # idempotent CUDA build (alternative runtime)
 └── models/                         # gitignored
 ```
@@ -172,6 +174,19 @@ Alternative backend (llama.cpp GGUF):
 - `pytest tests/` must pass on CPU with no model present. Tests use saved caption text fixtures.
 - Test cases to keep: empty caption, repeated terms (dedupe), multiword terms ("acoustic guitar" must not also yield only "guitar" wrongly), terms that are substrings of others (`bass` vs `bass guitar`), case insensitivity.
 - GPU smoke test is a separate manual notebook cell, never part of `pytest`.
+
+## Batch runs & resumability (Colab is ephemeral)
+
+- GitHub is the durable store; local disk is not. `scripts/batch.py` must
+  checkpoint after **every album**: atomic write of
+  `outputs/<ARTIST>/<album>.json`, update `outputs/index.json`, then
+  `git add` / `commit` / `push` immediately.
+- A fresh runtime resumes by `git pull` + reading the manifest; never redo an
+  album whose JSON is present. `--force` is the only way to redo.
+- Audio is skip-if-present under `work/` (gitignored) and re-fetchable from
+  GCS, so only the in-flight album is ever lost.
+- Writes must be atomic (temp file + `os.replace`) so a killed session cannot
+  leave a corrupt result.
 
 ## Guardrails
 

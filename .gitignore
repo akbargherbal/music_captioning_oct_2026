@@ -10,10 +10,11 @@ audio/
 *.m4a
 *.ogg
 
-# Generated caption JSON (regenerate with scripts/demo.py --out)
-outputs/*
-# ...except committed benchmark results:
-!outputs/Elissa_2008_Ayami_Beek.json
+# Demo output (regenerate with scripts/demo.py --out)
+outputs/elisa.json
+
+# Audio cache for batch runs (re-downloadable from GCS)
+work/
 
 # Build artifacts
 llama.cpp/

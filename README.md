@@ -118,6 +118,24 @@ Only tags the caption actually mentions are emitted (no guessing, e.g. no vocal
 gender unless stated). Long tracks are split into ~60 s chunks, captioned
 separately, and merged with order-preserving de-duplication.
 
+## Resumable batch across Colab sessions
+
+Colab runtimes are ephemeral (free tier ~2–3 h; disk is lost on disconnect).
+The batch runner treats **GitHub as the durable store**: after *every* album it
+writes the result, updates `outputs/index.json`, and commits + pushes
+immediately.
+
+```bash
+python scripts/batch.py --artist ELISSA --max-minutes 90   # or omit --artist for all
+python scripts/batch.py --artist ELISSA --list             # show pending vs done
+```
+
+On a fresh runtime, just re-run the same command: it `git pull`s, reads the
+manifest, and **skips every album already done**. Only the in-flight album is
+lost if you get disconnected. Flags: `--list`, `--force` (redo), `--max-albums N`,
+`--max-minutes N` (stop cleanly between albums), `--no-push`. Audio is cached in
+`work/` (gitignored) and re-downloaded only when missing.
+
 ## Benchmarking
 
 Time captioning for one file or a whole album (model loaded once, reused):
