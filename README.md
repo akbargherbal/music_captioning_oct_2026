@@ -145,6 +145,11 @@ the failed tracks. A single bad track never discards an album's work.
 (default 480 = 8 min) are listed under `skipped_tracks` — handy for concert
 recordings or long mixes. Set `0` to disable the cap.
 
+**Low-quality tracks are skipped too.** `--min-bitrate-kbps` (default 128;
+`0` disables) drops low-bitrate files (e.g. 32/64 kbps) before captioning. For a
+local `--root` whose directory name isn't the artist label you want, pass
+`--artist-name NAME`.
+
 ## Benchmarking
 
 Time captioning for one file or a whole album (model loaded once, reused):
