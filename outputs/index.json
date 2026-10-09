@@ -14,7 +14,14 @@
       "track_count": 11,
       "total_caption_seconds": 585.6,
       "completed_at": "2026-10-09T16:56:51"
+    },
+    "ELISSA/Elissa - 2002 Aayshalak": {
+      "path": "ELISSA/Elissa - 2002 Aayshalak.json",
+      "source_dir": "/content/ELISSA/Elissa - 2002 Aayshalak",
+      "track_count": 10,
+      "total_caption_seconds": 552.4,
+      "completed_at": "2026-10-09T17:06:07"
     }
   },
-  "updated_at": "2026-10-09T16:56:51"
+  "updated_at": "2026-10-09T17:06:07"
 }
