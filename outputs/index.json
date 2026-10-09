@@ -21,7 +21,14 @@
       "track_count": 10,
       "total_caption_seconds": 552.4,
       "completed_at": "2026-10-09T17:06:07"
+    },
+    "ELISSA/Elissa - 2004 Ahla Donya": {
+      "path": "ELISSA/Elissa - 2004 Ahla Donya.json",
+      "source_dir": "/content/ELISSA/Elissa - 2004 Ahla Donya",
+      "track_count": 14,
+      "total_caption_seconds": 802.3,
+      "completed_at": "2026-10-09T17:19:33"
     }
   },
-  "updated_at": "2026-10-09T17:06:07"
+  "updated_at": "2026-10-09T17:19:33"
 }
