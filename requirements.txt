@@ -1,0 +1,9 @@
+# Tested on Google Colab T4 (Python 3.13, torch 2.11+cu130).
+# torch itself is preinstalled on Colab; the HF backend needs it.
+huggingface_hub>=0.23
+transformers>=5.1          # Qwen2.5-Omni support
+bitsandbytes>=0.50         # 4-bit (nf4) quantization
+accelerate>=1.10           # device_map loading
+librosa>=0.11              # audio loading (16 kHz mono)
+soundfile>=0.13
+pytest>=8.0

@@ -10,7 +10,7 @@ Given **any music track**, produce Suno-style prompt tags describing:
 2. **Vocals**
 3. **Production**
 
-Pipeline: `audio -> ACE-Step Captioner (GGUF, llama.cpp) -> prose caption -> lexicon tag extractor -> Suno prompt string`.
+Pipeline: `audio -> ACE-Step Captioner (4-bit transformers; GGUF/llama.cpp alternative) -> prose caption -> lexicon tag extractor -> Suno prompt string`.
 
 ## Hard environment constraints (Google Colab T4)
 
@@ -22,18 +22,36 @@ Pipeline: `audio -> ACE-Step Captioner (GGUF, llama.cpp) -> prose caption -> lex
 
 ## Model decision (do not change without asking the user)
 
+The **model and prompt are unchanged**. The **runtime was switched on 2026-10-09 with
+explicit user approval** (see `docs/RESULTS.md`).
+
 | Item | Value |
 |---|---|
 | Model | `ACE-Step/acestep-captioner` (MIT), based on Qwen2.5-Omni-7B |
+| Runtime (current) | HuggingFace `transformers` + `bitsandbytes` 4-bit (nf4), fp16 compute, SDPA (no FlashAttention) |
+| Weights (current) | `Urabewe/Ace-Step-Captioner-4bit` community conversion (~6.4 GB) + `spk_dict.pt` from `ACE-Step/acestep-captioner` |
+| Prompt | exactly `*Task* Describe this audio in detail` (the only prompt the model card documents) |
+| Decoding | greedy (`do_sample=False`), 400 new tokens, deterministic |
+
+Why: there is **no Linux CUDA prebuilt** of llama.cpp and no NVIDIA Vulkan ICD on
+Colab, so the pinned GGUF runtime requires compiling llama.cpp from source for
+`sm_75` (a multi-minute CUDA build). The transformers route uses the reference
+audio pipeline, so the llama.cpp audio patch is unnecessary.
+
+### Alternative runtime: llama.cpp GGUF (still supported)
+
+Kept as a fallback in `src/captioner.py` + `scripts/build_llamacpp.sh`.
+
+| Item | Value |
+|---|---|
 | Runtime | llama.cpp, CUDA, built with `-DCMAKE_CUDA_ARCHITECTURES=75` |
 | Weights | `dernet/acestep-captioner-GGUF`: `acestep-captioner-Q4_K_M.gguf` (4.7 GB) + `acestep-captioner-mmproj-Q8_0.gguf` (1.5 GB) |
-| Prompt | exactly `*Task* Describe this audio in detail` (the only prompt the model card documents) |
 | Decoding | `--temp 0`, `-n 400`, deterministic |
 
 **Stock llama.cpp mishandles this model's audio input** (can add a silent segment and caption silence). Use a patched build:
 
 - Fork branch: `https://github.com/tpsjr7/llama.cpp` branch `ted/fix-qwen-audio-cleanup-merge`, or
-- Patch source: `https://github.com/koda-dernet/acestep-captioner` (the GGUF author's documented engine).
+- Patch source: `https://github.com/koda-dernet/acestep-captioner` (the GGUF author's documented engine; ships a 1.88 MB `libmtmd.so` overlay for llama.cpp `b10796`).
 
 Rejected options (don't switch to them silently):
 
@@ -49,20 +67,37 @@ Rejected options (don't switch to them silently):
 ├── requirements.txt
 ├── notebooks/colab_setup.ipynb     # build + download + demo
 ├── src/
-│   ├── captioner.py                # llama.cpp subprocess wrapper
+│   ├── captioner_hf.py             # transformers 4-bit backend (current)
+│   ├── captioner.py                # llama.cpp subprocess wrapper (alternative)
 │   ├── tags.py                     # lexicon + to_suno()
 │   └── lexicon.json                # instruments / vocals / production terms
 ├── tests/
 │   ├── test_tags.py                # pure-Python, no GPU needed
 │   └── fixtures/captions/*.txt     # saved example captions
-├── scripts/build_llamacpp.sh       # idempotent CUDA build
+├── scripts/
+│   ├── demo.py                     # end-to-end CLI
+│   └── build_llamacpp.sh           # idempotent CUDA build (alternative runtime)
 └── models/                         # gitignored
 ```
 
 ## Setup commands
 
+Current (transformers 4-bit):
+
+```python
+from huggingface_hub import snapshot_download, hf_hub_download
+snapshot_download("Urabewe/Ace-Step-Captioner-4bit", local_dir="models/Ace-Step-Captioner-4bit",
+                  allow_patterns=["*.json", "*.safetensors", "*.jinja", "*.txt", "*.model"])
+hf_hub_download("ACE-Step/acestep-captioner", "spk_dict.pt", local_dir="models/Ace-Step-Captioner-4bit")
+```
+
 ```bash
-# Build patched llama.cpp for T4 (idempotent: skip if binary exists)
+python scripts/demo.py SONG.mp3            # backend defaults to hf
+```
+
+Alternative (llama.cpp GGUF) — build patched llama.cpp for T4 (idempotent: skip if binary exists):
+
+```bash
 [ -x llama.cpp/build/bin/llama-cli ] || {
   git clone -b ted/fix-qwen-audio-cleanup-merge https://github.com/tpsjr7/llama.cpp
   cmake -S llama.cpp -B llama.cpp/build -DGGML_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=75
@@ -76,25 +111,36 @@ m = hf_hub_download("dernet/acestep-captioner-GGUF", "acestep-captioner-Q4_K_M.g
 p = hf_hub_download("dernet/acestep-captioner-GGUF", "acestep-captioner-mmproj-Q8_0.gguf", local_dir="models")
 ```
 
-Inference command shape:
-
 ```bash
-llama.cpp/build/bin/llama-cli -m models/acestep-captioner-Q4_K_M.gguf \
-  --mmproj models/acestep-captioner-mmproj-Q8_0.gguf --audio SONG.mp3 \
-  -p "*Task* Describe this audio in detail" \
-  -n 400 --temp 0 --single-turn --simple-io -ngl 999 --ctx-size 8192
+python scripts/demo.py SONG.mp3 --backend llamacpp
 ```
 
 ## Known status: verified vs unverified
 
-- Verified from sources: model licenses, base architecture, GGUF file sizes, need for patched audio handling.
-- **Not yet verified on a real T4:** the build, VRAM use (~6.9 GiB was measured on an RTX 4070 Ti SUPER, not a T4), and whether the Q8_0 projector works with the `tpsjr7` fork.
-- When you run on Colab, **record real results** (VRAM, seconds per clip, errors) in `docs/RESULTS.md`. Do not claim the pipeline works until you have run it end to end.
+- **Verified on a real T4 (2026-10-09):** the transformers 4-bit backend runs end
+  to end. A 317 s track → 6 chunks, 68.5 s caption time, **8.0 GiB peak VRAM**.
+  See `docs/RESULTS.md`.
+- Verified from sources: model licenses, base architecture, and that stock
+  llama.cpp needs a patched audio build.
+- **Not verified on a T4:** the llama.cpp GGUF path (no Linux CUDA prebuilt; the
+  building was stopped and is not known to link).
+- When you run on Colab, **record real results** in `docs/RESULTS.md`. Do not
+  claim the pipeline works until you have run it end to end.
 
 ## Troubleshooting order
 
+Current backend (transformers 4-bit):
+
+1. `spk_dict.pt` missing: download it from `ACE-Step/acestep-captioner` into the model dir.
+2. bf16/dtype errors: force `bnb_4bit_compute_dtype = float16` (T4 has no bf16).
+3. Talker/audio-output errors: use `generation_mode="text"` (skip the talker).
+4. CUDA OOM: shorten chunks; keep 4-bit; ensure nothing else holds VRAM.
+5. Still failing: stop and report the exact error to the user. Don't swap models.
+
+Alternative backend (llama.cpp GGUF):
+
 1. Build fails: confirm `nvcc --version`, then retry with a fresh clone.
-2. Audio error or garbage caption: confirm you are on the patched build, not stock llama.cpp.
+2. Audio error or garbage caption: confirm the patched build, not stock llama.cpp.
 3. Projector error: add `--no-mmproj-offload`.
 4. CUDA OOM: lower `-ngl` (try 20, then 4); lower `--ctx-size`; trim audio.
 5. Caption talks about silence: audio-handling bug; check build/branch, try a clip not a multiple of 30 s.

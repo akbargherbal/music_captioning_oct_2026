@@ -1,0 +1,34 @@
+# Models / weights (never commit)
+models/
+*.gguf
+
+# Audio inputs and generated chunks (never commit)
+audio/
+*.mp3
+*.wav
+*.flac
+*.m4a
+*.ogg
+
+# Build artifacts
+llama.cpp/
+build/
+*.o
+
+# Secrets
+.env
+.env.*
+*.token
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
