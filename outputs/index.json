@@ -118,7 +118,17 @@
       "status": "ok",
       "total_caption_seconds": 686.4,
       "completed_at": "2026-10-09T19:01:11"
+    },
+    "FADL_SHAKER/06.Sidi Rohi.2003": {
+      "path": "FADL_SHAKER/06.Sidi Rohi.2003.json",
+      "source_dir": "/content/Fadl Shaker.Full Discography.BY.RoMaNTiCPoET/06.Sidi Rohi.2003",
+      "track_count": 11,
+      "failed_count": 0,
+      "skipped_count": 0,
+      "status": "ok",
+      "total_caption_seconds": 638.1,
+      "completed_at": "2026-10-09T19:11:53"
     }
   },
-  "updated_at": "2026-10-09T19:01:11"
+  "updated_at": "2026-10-09T19:11:53"
 }
