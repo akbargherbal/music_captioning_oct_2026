@@ -36,6 +36,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT))
 
 from src.resume import (  # noqa: E402
+    SkippedTrack,
     album_key,
     album_output_path,
     album_status,
@@ -103,13 +104,15 @@ def process_album(
     outputs: Path,
     existing: dict | None = None,
     retry_only_failed: bool = False,
+    max_track_seconds: float = 0.0,
 ) -> dict:
     """Caption one album, **isolating per-track failures**.
 
     A track that raises is recorded under ``failed_tracks`` and skipped; the
-    remaining tracks are still written and committed. Only if *every* track
-    fails does the album count as failed — in that case nothing is written, so
-    the album stays pending and is retried next run.
+    remaining tracks are still written and committed. A track longer than
+    ``max_track_seconds`` (e.g. a concert) is recorded under ``skipped_tracks``
+    instead. Only if *every* non-skipped track fails does the album count as
+    failed — in that case nothing is written, so it stays pending.
     """
     from src.captioner import audio_duration
     from src.captioner_hf import caption_and_tag
@@ -125,6 +128,8 @@ def process_album(
         else:
             local = Path(uri)
         duration = audio_duration(local)
+        if max_track_seconds and duration > max_track_seconds:
+            raise SkippedTrack(f"{duration:.0f}s > {max_track_seconds:.0f}s cap")
         t0 = time.time()
         result = caption_and_tag(captioner, local)
         caption_s = time.time() - t0
@@ -140,15 +145,22 @@ def process_album(
             "suno_prompt": result["suno_prompt"],
         }
 
-    track_results, failed = run_tracks(
+    track_results, failed, skipped = run_tracks(
         entry["tracks"], caption_one,
         existing=existing, retry_only_failed=retry_only_failed,
         echo=lambda m: print(f"    {m}", flush=True),
     )
 
-    if not track_results:
+    if not track_results and failed:
         first = f"; first error: {failed[0]['error']}" if failed else ""
-        raise RuntimeError(f"all {len(entry['tracks'])} tracks failed{first}")
+        raise RuntimeError(f"no tracks captioned ({len(failed)} failed){first}")
+
+    if failed:
+        status = "partial"
+    elif skipped and not track_results:
+        status = "skipped"
+    else:
+        status = "ok"
 
     total_audio = sum(t["duration_s"] for t in track_results)
     total_caption = sum(t["caption_seconds"] for t in track_results)
@@ -160,9 +172,10 @@ def process_album(
         "album": album,
         "source_dir": entry["source_dir"],
         "generated_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
-        "status": "partial" if failed else "ok",
+        "status": status,
         "track_count": len(track_results),
         "failed_count": len(failed),
+        "skipped_count": len(skipped),
         "total_audio_seconds": round(total_audio, 1),
         "total_caption_seconds": round(total_caption, 1),
         "instruments": merged["instruments"],
@@ -171,6 +184,7 @@ def process_album(
         "suno_prompt": to_suno(merged),
         "tracks": track_results,
         "failed_tracks": failed,
+        "skipped_tracks": skipped,
     }
     atomic_write_json(album_output_path(outputs, artist, album), album_obj)
     return album_obj
@@ -187,6 +201,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--manifest", type=Path, default=REPO_ROOT / "outputs" / "index.json")
     parser.add_argument("--hf-model", type=Path, default=REPO_ROOT / "models" / "Ace-Step-Captioner-4bit")
     parser.add_argument("--chunk-seconds", type=float, default=60.0)
+    parser.add_argument("--max-track-seconds", type=float, default=480.0,
+                        help="skip tracks longer than this (default 480 = 8 min; "
+                             "0 disables the cap). Guards against concerts/long mixes.")
     parser.add_argument("--max-minutes", type=float, default=100.0,
                         help="stop cleanly between albums after this long (0 = no limit)")
     parser.add_argument("--max-albums", type=int, default=0, help="cap albums this run (0 = no cap)")
@@ -271,6 +288,7 @@ def main(argv: list[str] | None = None) -> int:
             album_obj = process_album(
                 captioner, entry, args.workdir, args.outputs,
                 existing=prior_obj, retry_only_failed=retry_only,
+                max_track_seconds=args.max_track_seconds,
             )
         except Exception as exc:  # noqa: BLE001 - keep going
             print(f"  ERROR on {key}: {type(exc).__name__}: {exc}")
@@ -281,6 +299,7 @@ def main(argv: list[str] | None = None) -> int:
             "source_dir": entry["source_dir"],
             "track_count": album_obj["track_count"],
             "failed_count": album_obj.get("failed_count", 0),
+            "skipped_count": album_obj.get("skipped_count", 0),
             "status": album_obj.get("status", "ok"),
             "total_caption_seconds": album_obj["total_caption_seconds"],
             "completed_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
@@ -292,8 +311,12 @@ def main(argv: list[str] | None = None) -> int:
         durations.append(album_min)
         completed += 1
         n_failed = album_obj.get("failed_count", 0)
+        n_skipped = album_obj.get("skipped_count", 0)
         print(f"  done in {album_min:.1f} min "
               f"({album_obj['total_caption_seconds']}s captioning)", flush=True)
+        if n_skipped:
+            print(f"  note: {n_skipped} track(s) skipped "
+                  f"(over --max-track-seconds={args.max_track_seconds:.0f})", flush=True)
         if n_failed:
             print(f"  WARNING: {n_failed} track(s) failed; re-run with "
                   f"--retry-failed to retry just them.", flush=True)
@@ -301,6 +324,7 @@ def main(argv: list[str] | None = None) -> int:
             REPO_ROOT,
             f"captions({key}): {album_obj['track_count']} tracks"
             + (f", {n_failed} failed" if n_failed else "")
+            + (f", {n_skipped} skipped" if n_skipped else "")
             + f" ({len(done) + completed}/{len(albums)})",
             push=push,
         )
@@ -309,15 +333,20 @@ def main(argv: list[str] | None = None) -> int:
     print(f"\nRun complete: {completed} album(s) this session, ~{remaining} still pending.")
     print(f"Total wall time: {(time.time() - started) / 60.0:.1f} min")
 
-    failed_albums = {
+    problematic = {
         k: v for k, v in (manifest.get("albums") or {}).items()
         if isinstance(v, dict) and v.get("status", "ok") != "ok"
     }
-    if failed_albums:
-        print(f"\n{len(failed_albums)} album(s) have failed tracks "
-              f"(re-run with --retry-failed):")
-        for k, v in sorted(failed_albums.items()):
-            print(f"  {k}: {v.get('failed_count', '?')} failed track(s)")
+    if problematic:
+        print(f"\n{len(problematic)} album(s) need attention:")
+        for k, v in sorted(problematic.items()):
+            bits = []
+            if v.get("failed_count"):
+                bits.append(f"{v['failed_count']} failed")
+            if v.get("skipped_count"):
+                bits.append(f"{v['skipped_count']} skipped")
+            print(f"  [{v.get('status', '?')}] {k}: " + ", ".join(bits))
+        print("  (re-run with --retry-failed to re-caption failed tracks)")
     return 0
 
 

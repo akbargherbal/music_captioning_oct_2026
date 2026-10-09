@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from src.resume import (
+    SkippedTrack,
     album_key,
     album_output_path,
     album_status,
@@ -142,9 +143,27 @@ def test_run_tracks_isolates_a_failure():
             raise ValueError("boom")
         return {"file": filename, "caption_seconds": 1.0}
 
-    results, failed = run_tracks(tracks, caption_one)
+    results, failed, skipped = run_tracks(tracks, caption_one)
     assert [r["file"] for r in results] == ["a.mp3", "c.mp3"]
     assert failed == [{"file": "bad.mp3", "error": "ValueError: boom"}]
+    assert skipped == []
+
+
+def test_run_tracks_records_skipped_separately():
+    tracks = [
+        {"filename": "song.mp3", "uri": "song"},
+        {"filename": "concert.mp3", "uri": "concert"},
+    ]
+
+    def caption_one(filename, uri):
+        if filename == "concert.mp3":
+            raise SkippedTrack("900s > 480s cap")
+        return {"file": filename, "caption_seconds": 1.0}
+
+    results, failed, skipped = run_tracks(tracks, caption_one)
+    assert [r["file"] for r in results] == ["song.mp3"]
+    assert failed == []  # a skip is not a failure
+    assert skipped == [{"file": "concert.mp3", "reason": "900s > 480s cap"}]
 
 
 def test_run_tracks_retry_only_failed_keeps_successes():
@@ -163,7 +182,7 @@ def test_run_tracks_retry_only_failed_keeps_successes():
         calls.append(filename)
         return {"file": filename, "caption_seconds": 9.0}
 
-    results, failed = run_tracks(
+    results, failed, _ = run_tracks(
         tracks, caption_one, existing=existing, retry_only_failed=True
     )
     assert calls == ["bad.mp3"]  # only the failed track is re-run

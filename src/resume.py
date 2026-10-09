@@ -17,6 +17,13 @@ AUDIO_SUFFIXES = {".mp3", ".wav", ".flac", ".m4a", ".ogg"}
 MANIFEST_VERSION = 1
 
 
+class SkippedTrack(Exception):
+    """Raised by a track callback to skip a track *without* failing its album.
+
+    Used for (e.g.) concert-length tracks past the ``--max-track-seconds`` cap.
+    """
+
+
 def album_key(artist: str, album: str) -> str:
     return f"{artist}/{album}"
 
@@ -174,21 +181,27 @@ def run_tracks(
     existing: dict | None = None,
     retry_only_failed: bool = False,
     echo: Callable[[str], None] | None = None,
-) -> tuple[list[dict], list[dict]]:
+) -> tuple[list[dict], list[dict], list[dict]]:
     """Caption tracks one by one, isolating per-track failures.
 
-    ``caption_one(filename, uri)`` returns a per-track result (or raises).
-    A raising track is recorded as ``{"file", "error"}`` and skipped, so one
-    bad track never sinks the album.
+    ``caption_one(filename, uri)`` returns a per-track result (or raises):
 
-    With ``retry_only_failed``, tracks that already succeeded in ``existing``
-    are kept as-is and only previously-failed tracks are re-run.
+    * raising :class:`SkippedTrack` -> recorded under ``skipped`` (e.g. the
+      track is longer than the configured cap),
+    * raising anything else -> recorded under ``failed``.
+
+    Neither case discards the album. With ``retry_only_failed``, tracks that
+    already succeeded in ``existing`` are kept and only previously-failed
+    tracks are re-run.
+
+    Returns ``(results, failed, skipped)``.
     """
     prior = existing or {}
     prior_tracks = {t["file"]: t for t in prior.get("tracks", [])}
     failed_files = {f.get("file") for f in prior.get("failed_tracks", [])}
     results: list[dict] = []
     failed: list[dict] = []
+    skipped: list[dict] = []
     for track in tracks:
         filename = track["filename"]
         if retry_only_failed and filename in prior_tracks and filename not in failed_files:
@@ -196,6 +209,11 @@ def run_tracks(
             continue
         try:
             result = caption_one(filename, track["uri"])
+        except SkippedTrack as exc:
+            if echo:
+                echo(f"{filename}: SKIPPED - {exc}")
+            skipped.append({"file": filename, "reason": str(exc)})
+            continue
         except Exception as exc:  # noqa: BLE001 - isolate a bad track
             msg = f"{type(exc).__name__}: {exc}"
             if echo:
@@ -205,7 +223,7 @@ def run_tracks(
         if echo:
             echo(f"{filename}: {result.get('caption_seconds', 0):.1f}s")
         results.append(result)
-    return results, failed
+    return results, failed, skipped
 
 
 def atomic_write_text(path: Path | str, text: str) -> None:

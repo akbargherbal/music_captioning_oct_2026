@@ -141,6 +141,10 @@ album JSON under `failed_tracks` and the manifest is marked `partial`; the rest
 of the album is still written and pushed. `--retry-failed` re-captions **only**
 the failed tracks. A single bad track never discards an album's work.
 
+**Long tracks are skipped, not failed.** Tracks longer than `--max-track-seconds`
+(default 480 = 8 min) are listed under `skipped_tracks` — handy for concert
+recordings or long mixes. Set `0` to disable the cap.
+
 ## Benchmarking
 
 Time captioning for one file or a whole album (model loaded once, reused):

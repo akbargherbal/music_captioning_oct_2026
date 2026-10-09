@@ -190,6 +190,9 @@ Alternative backend (llama.cpp GGUF):
 - Isolate per-track failures: log the track, keep the rest of the album, mark
   the manifest `partial`, and re-run only the failures via `--retry-failed`.
   Never let one bad track discard an album's work.
+- Skip (don't process) tracks longer than `--max-track-seconds` (default 480 =
+  8 min): record them under `skipped_tracks`. Skips are neither successes nor
+  failures — they don't affect album status. `0` disables the cap.
 
 ## Guardrails
 
