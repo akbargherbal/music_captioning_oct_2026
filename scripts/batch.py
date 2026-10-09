@@ -47,6 +47,7 @@ from src.resume import (  # noqa: E402
     load_manifest,
     pending_albums,
     run_tracks,
+    skip_reason,
 )
 from src.tags import CATEGORIES  # noqa: E402
 
@@ -105,16 +106,18 @@ def process_album(
     existing: dict | None = None,
     retry_only_failed: bool = False,
     max_track_seconds: float = 0.0,
+    min_bitrate_kbps: float = 0.0,
 ) -> dict:
     """Caption one album, **isolating per-track failures**.
 
     A track that raises is recorded under ``failed_tracks`` and skipped; the
     remaining tracks are still written and committed. A track longer than
-    ``max_track_seconds`` (e.g. a concert) is recorded under ``skipped_tracks``
-    instead. Only if *every* non-skipped track fails does the album count as
-    failed — in that case nothing is written, so it stays pending.
+    ``max_track_seconds`` (e.g. a concert) or below ``min_bitrate_kbps`` (low
+    quality) is recorded under ``skipped_tracks`` instead. Only if *every*
+    non-skipped track fails does the album count as failed — in that case
+    nothing is written, so it stays pending.
     """
-    from src.captioner import audio_duration
+    from src.captioner import audio_stream_info
     from src.captioner_hf import caption_and_tag
     from src.tags import merge_tags, to_suno
 
@@ -127,16 +130,20 @@ def process_album(
             download_track(uri, local)
         else:
             local = Path(uri)
-        duration = audio_duration(local)
-        if max_track_seconds and duration > max_track_seconds:
-            raise SkippedTrack(f"{duration:.0f}s > {max_track_seconds:.0f}s cap")
+        duration, bitrate = audio_stream_info(local)
+        reason = skip_reason(duration, bitrate,
+                             max_track_seconds=max_track_seconds,
+                             min_bitrate_kbps=min_bitrate_kbps)
+        if reason:
+            raise SkippedTrack(reason)
         t0 = time.time()
         result = caption_and_tag(captioner, local)
         caption_s = time.time() - t0
         result.pop("chunk_captions", None)
         return {
             "file": filename,
-            "duration_s": round(duration, 1),
+            "duration_s": round(duration or 0.0, 1),
+            "bitrate_kbps": round(bitrate) if bitrate else None,
             "caption_seconds": round(caption_s, 1),
             "instruments": result["instruments"],
             "vocals": result["vocals"],
@@ -196,6 +203,9 @@ def main(argv: list[str] | None = None) -> int:
                         help="GCS prefix (gs://...) or a local directory to scan")
     parser.add_argument("--artist", action="append", default=None,
                         help="only this artist (repeatable); default: all")
+    parser.add_argument("--artist-name", default=None,
+                        help="override the artist label for a local --root "
+                             "(default: the root directory name)")
     parser.add_argument("--workdir", type=Path, default=REPO_ROOT / "work")
     parser.add_argument("--outputs", type=Path, default=REPO_ROOT / "outputs")
     parser.add_argument("--manifest", type=Path, default=REPO_ROOT / "outputs" / "index.json")
@@ -204,6 +214,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--max-track-seconds", type=float, default=480.0,
                         help="skip tracks longer than this (default 480 = 8 min; "
                              "0 disables the cap). Guards against concerts/long mixes.")
+    parser.add_argument("--min-bitrate-kbps", type=float, default=128.0,
+                        help="skip tracks below this audio bitrate (default 128; "
+                             "0 disables). Filters out low-quality 32/64 kbps files.")
     parser.add_argument("--max-minutes", type=float, default=100.0,
                         help="stop cleanly between albums after this long (0 = no limit)")
     parser.add_argument("--max-albums", type=int, default=0, help="cap albums this run (0 = no cap)")
@@ -225,7 +238,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.root.startswith("gs://"):
         albums = group_tracks(list_gs_mp3(args.root), args.root)
     else:
-        albums = group_local_tracks(args.root)
+        albums = group_local_tracks(args.root, artist=args.artist_name)
     if args.artist:
         wanted = set(args.artist)
         albums = {k: v for k, v in albums.items() if v["artist"] in wanted}
@@ -289,6 +302,7 @@ def main(argv: list[str] | None = None) -> int:
                 captioner, entry, args.workdir, args.outputs,
                 existing=prior_obj, retry_only_failed=retry_only,
                 max_track_seconds=args.max_track_seconds,
+                min_bitrate_kbps=args.min_bitrate_kbps,
             )
         except Exception as exc:  # noqa: BLE001 - keep going
             print(f"  ERROR on {key}: {type(exc).__name__}: {exc}")

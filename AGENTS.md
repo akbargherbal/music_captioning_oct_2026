@@ -193,6 +193,9 @@ Alternative backend (llama.cpp GGUF):
 - Skip (don't process) tracks longer than `--max-track-seconds` (default 480 =
   8 min): record them under `skipped_tracks`. Skips are neither successes nor
   failures — they don't affect album status. `0` disables the cap.
+- Skip low-quality tracks below `--min-bitrate-kbps` (default 128; `0`
+  disables) the same way — never caption 32/64 kbps files. For a local root,
+  `--artist-name` overrides the artist label (default: the root dir name).
 
 ## Guardrails
 

@@ -17,6 +17,7 @@ from src.resume import (
     parse_gs_track,
     pending_albums,
     run_tracks,
+    skip_reason,
 )
 
 ROOT = "gs://bucket/DISCOGRAPHY"
@@ -200,6 +201,30 @@ def test_run_tracks_echo_reports_progress():
         echo=msgs.append,
     )
     assert msgs == ["a.mp3: 3.0s"]
+
+
+def test_skip_reason_low_bitrate():
+    assert skip_reason(200, 64, min_bitrate_kbps=128) == "64 kbps < 128 kbps"
+    assert skip_reason(200, 96, min_bitrate_kbps=128) == "96 kbps < 128 kbps"
+    assert skip_reason(200, 128, min_bitrate_kbps=128) is None
+    assert skip_reason(200, 320, min_bitrate_kbps=128) is None
+
+
+def test_skip_reason_long_track():
+    assert skip_reason(600, 320, max_track_seconds=480) == "600s > 480s cap"
+    assert skip_reason(480, 320, max_track_seconds=480) is None
+    assert skip_reason(300, 320, max_track_seconds=480) is None
+
+
+def test_skip_reason_unknown_values_do_not_skip():
+    assert skip_reason(None, None, max_track_seconds=480, min_bitrate_kbps=128) is None
+    # a known bad value still skips even if the other is unknown
+    assert skip_reason(600, None, max_track_seconds=480) == "600s > 480s cap"
+    assert skip_reason(None, 64, min_bitrate_kbps=128) == "64 kbps < 128 kbps"
+
+
+def test_skip_reason_disabled_caps():
+    assert skip_reason(999, 32) is None  # both caps default to 0 = off
 
 
 def test_group_local_tracks_artist_dir(tmp_path: Path):

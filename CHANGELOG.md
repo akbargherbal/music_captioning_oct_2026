@@ -16,6 +16,9 @@
 - `--max-track-seconds` (default 480 = 8 min): tracks longer than this are
   recorded under `skipped_tracks` and not captioned (guards against concerts);
   skips are not failures and don't affect album status.
+- `--min-bitrate-kbps` (default 128; `0` disables): low-quality tracks are
+  skipped the same way. `--artist-name` overrides the artist label for a local
+  `--root` (default: the root directory name).
 
 ## [1.0.0] - 2026-10-09
 

@@ -12,6 +12,7 @@ Safety notes (see AGENTS.md):
 
 from __future__ import annotations
 
+import json
 import re
 import shutil
 import subprocess
@@ -197,6 +198,40 @@ def audio_duration(path: Path | str) -> float:
         return float(proc.stdout.strip())
     except ValueError as exc:
         raise CaptionerError(f"could not parse duration {proc.stdout!r}") from exc
+
+
+def audio_stream_info(path: Path | str) -> tuple[float | None, float | None]:
+    """Return ``(duration_seconds, audio_bitrate_kbps)`` in one ffprobe call.
+
+    Either value may be ``None`` when ffprobe does not report it (some VBR
+    files). Used by the batch runner to skip low-quality / over-long tracks.
+    """
+    if shutil.which("ffprobe") is None:
+        raise CaptionerError("ffprobe not found on PATH (install ffmpeg)")
+    proc = subprocess.run(
+        [
+            "ffprobe", "-v", "error", "-select_streams", "a:0",
+            "-show_entries", "stream=bit_rate:format=duration,bit_rate",
+            "-of", "json", str(path),
+        ],
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=False,
+    )
+    if proc.returncode != 0:
+        raise CaptionerError(f"ffprobe failed on {path}: {proc.stderr.strip()}")
+    try:
+        data = json.loads(proc.stdout or "{}")
+    except json.JSONDecodeError as exc:
+        raise CaptionerError(f"could not parse ffprobe output for {path}") from exc
+    stream = (data.get("streams") or [{}])[0]
+    fmt = data.get("format") or {}
+    raw_br = stream.get("bit_rate") or fmt.get("bit_rate")
+    raw_dur = fmt.get("duration")
+    bitrate = float(raw_br) / 1000.0 if raw_br else None
+    duration = float(raw_dur) if raw_dur else None
+    return duration, bitrate
 
 
 def _split_audio(path: Path, out_dir: Path, chunk_seconds: float) -> list[Path]:

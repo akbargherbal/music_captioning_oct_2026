@@ -175,6 +175,24 @@ def pending_albums(
     return out
 
 
+def skip_reason(
+    duration_s: float | None,
+    bitrate_kbps: float | None,
+    max_track_seconds: float = 0.0,
+    min_bitrate_kbps: float = 0.0,
+) -> str | None:
+    """Why a track should be skipped, or ``None`` to process it.
+
+    Bitrate (quality) is checked first, then duration. Missing values (``None``)
+    never trigger a skip, so unknown metadata is processed rather than dropped.
+    """
+    if min_bitrate_kbps and bitrate_kbps and bitrate_kbps < min_bitrate_kbps:
+        return f"{bitrate_kbps:.0f} kbps < {min_bitrate_kbps:.0f} kbps"
+    if max_track_seconds and duration_s and duration_s > max_track_seconds:
+        return f"{duration_s:.0f}s > {max_track_seconds:.0f}s cap"
+    return None
+
+
 def run_tracks(
     tracks: list[dict],
     caption_one: Callable[[str, str], dict],
