@@ -73,6 +73,45 @@ def group_tracks(uris: list[str], root: str) -> dict[str, dict[str, object]]:
     return albums
 
 
+def group_local_tracks(
+    root: Path | str, artist: str | None = None
+) -> dict[str, dict[str, object]]:
+    """Group audio files under a local root into albums.
+
+    Supported layouts:
+      ``root/<file>``                    -> artist = root.name, album = root.name
+      ``root/<album>/<file>``            -> artist = root.name, album = <album>
+      ``root/<artist>/<album>/<file>``   -> artist = <artist>
+
+    ``artist`` overrides the derived artist name.
+    """
+    root = Path(root)
+    if not root.exists():
+        raise FileNotFoundError(f"root not found: {root}")
+    albums: dict[str, dict[str, object]] = {}
+    for path in sorted(root.rglob("*")):
+        if not path.is_file() or path.suffix.lower() not in AUDIO_SUFFIXES:
+            continue
+        parts = path.relative_to(root).parts
+        if len(parts) == 1:
+            a, alb, fname, src = artist or root.name, root.name, parts[0], root
+        elif len(parts) == 2:
+            a, alb, fname, src = artist or root.name, parts[0], parts[1], root / parts[0]
+        else:
+            a = artist or parts[0]
+            alb, fname = parts[1], str(Path(*parts[2:]))
+            src = root / parts[0] / parts[1]
+        key = album_key(a, alb)
+        entry = albums.setdefault(
+            key,
+            {"artist": a, "album": alb, "source_dir": str(src), "tracks": []},
+        )
+        entry["tracks"].append({"filename": fname, "uri": str(path)})
+    for entry in albums.values():
+        entry["tracks"].sort(key=lambda t: t["filename"])  # type: ignore[index]
+    return albums
+
+
 def load_manifest(path: Path | str) -> dict[str, object]:
     """Load the manifest, returning an empty one if missing/corrupt."""
     p = Path(path)

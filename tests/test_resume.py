@@ -8,6 +8,7 @@ from src.resume import (
     album_output_path,
     atomic_write_json,
     atomic_write_text,
+    group_local_tracks,
     group_tracks,
     is_done,
     load_manifest,
@@ -96,3 +97,36 @@ def test_pending_albums_and_force(tmp_path: Path):
     manifest = {"albums": {"ELISSA/A": {"path": "ELISSA/A.json"}}}
     assert pending_albums(albums, manifest, outputs) == ["ELISSA/B"]
     assert pending_albums(albums, manifest, outputs, force=True) == ["ELISSA/A", "ELISSA/B"]
+
+
+def test_group_local_tracks_artist_dir(tmp_path: Path):
+    # root itself is the artist dir: root/<album>/<file>
+    root = tmp_path / "ELISSA"
+    (root / "Album B").mkdir(parents=True)
+    (root / "Album B" / "02. Two.mp3").write_bytes(b"x")
+    (root / "Album B" / "01. One.mp3").write_bytes(b"x")
+    (root / "Album B" / "cover.jpg").write_bytes(b"x")
+    albums = group_local_tracks(root)
+    assert set(albums) == {"ELISSA/Album B"}
+    assert albums["ELISSA/Album B"]["artist"] == "ELISSA"
+    assert [t["filename"] for t in albums["ELISSA/Album B"]["tracks"]] == [
+        "01. One.mp3", "02. Two.mp3",
+    ]
+
+
+def test_group_local_tracks_artist_parent(tmp_path: Path):
+    # root/<artist>/<album>/<file>
+    root = tmp_path
+    album = root / "FADL" / "Album A"
+    album.mkdir(parents=True)
+    (album / "01. Song.mp3").write_bytes(b"x")
+    albums = group_local_tracks(root)
+    assert set(albums) == {"FADL/Album A"}
+
+
+def test_group_local_tracks_flat(tmp_path: Path):
+    album = tmp_path / "Single"
+    album.mkdir()
+    (album / "song.mp3").write_bytes(b"x")
+    albums = group_local_tracks(album)
+    assert set(albums) == {"Single/Single"}

@@ -33,6 +33,7 @@ from src.resume import (  # noqa: E402
     album_key,
     album_output_path,
     atomic_write_json,
+    group_local_tracks,
     group_tracks,
     is_done,
     load_manifest,
@@ -101,8 +102,12 @@ def process_album(captioner, entry: dict, workdir: Path, outputs: Path) -> dict:
 
     for track in entry["tracks"]:
         filename = track["filename"]
-        local = album_dir / filename
-        download_track(track["uri"], local)
+        uri = track["uri"]
+        if uri.startswith("gs://"):
+            local = album_dir / filename
+            download_track(uri, local)
+        else:
+            local = Path(uri)
         duration = audio_duration(local)
         t0 = time.time()
         result = caption_and_tag(captioner, local)
@@ -145,7 +150,8 @@ def process_album(captioner, entry: dict, workdir: Path, outputs: Path) -> dict:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--root", default=DEFAULT_ROOT, help="GCS prefix to scan")
+    parser.add_argument("--root", default=DEFAULT_ROOT,
+                        help="GCS prefix (gs://...) or a local directory to scan")
     parser.add_argument("--artist", action="append", default=None,
                         help="only this artist (repeatable); default: all")
     parser.add_argument("--workdir", type=Path, default=REPO_ROOT / "work")
@@ -168,8 +174,10 @@ def main(argv: list[str] | None = None) -> int:
         if proc.returncode != 0:
             print(f"WARNING: git pull failed: {proc.stderr.strip()[:200]}")
 
-    uris = list_gs_mp3(args.root)
-    albums = group_tracks(uris, args.root)
+    if args.root.startswith("gs://"):
+        albums = group_tracks(list_gs_mp3(args.root), args.root)
+    else:
+        albums = group_local_tracks(args.root)
     if args.artist:
         wanted = set(args.artist)
         albums = {k: v for k, v in albums.items() if v["artist"] in wanted}
