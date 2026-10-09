@@ -23,12 +23,21 @@ A llama.cpp GGUF backend is also supported; see *Alternative backend* below.
 - `ffmpeg` / `ffprobe` on `PATH` (used to split long tracks).
 - Python 3.10+.
 
-## Quickstart
+## Quickstart (fresh Colab runtime, start to finish)
+
+Every step is idempotent — re-running skips what already exists. Colab already
+provides `torch`, `ffmpeg` and `ffprobe`; only the extra packages are installed.
+Both Hugging Face repos are public, so **no HF token is needed**.
 
 ```bash
-pip install -r requirements.txt
+# 0. Get the code (skip if already on this runtime / on Drive).
+git clone https://github.com/akbargherbal/music_captioning_oct_2026.git
+cd music_captioning_oct_2026
 
-# 1. Download the 4-bit captioner (~6.4 GB) + spk_dict.pt (idempotent).
+# 1. Dependencies (torch itself is preinstalled on Colab).
+pip install -q -r requirements.txt
+
+# 2. Weights: 4-bit captioner (~6.4 GB) + spk_dict.pt (skipped if cached).
 python - <<'PY'
 from huggingface_hub import snapshot_download, hf_hub_download
 snapshot_download("Urabewe/Ace-Step-Captioner-4bit", local_dir="models/Ace-Step-Captioner-4bit",
@@ -36,11 +45,21 @@ snapshot_download("Urabewe/Ace-Step-Captioner-4bit", local_dir="models/Ace-Step-
 hf_hub_download("ACE-Step/acestep-captioner", "spk_dict.pt", local_dir="models/Ace-Step-Captioner-4bit")
 PY
 
-# 2. Run the pipeline on a track.
+# 3. Run the pipeline on a track (upload one, or point at a path).
 python scripts/demo.py /content/elisa_maktooba_leek.mp3
+
+# 4. Optional: CPU-only tests, no model or GPU needed.
+python -m pytest tests/ -q
 ```
 
-Or open `notebooks/colab_setup.ipynb` and run all cells.
+Or open `notebooks/colab_setup.ipynb` and **Run all** — it does exactly the
+same thing, cell by cell.
+
+> **The runtime is ephemeral.** `models/` lives on the Colab VM and is lost on
+> restart, so a fresh runtime re-downloads ~6.4 GB. To avoid that, persist it on
+> Drive before step 2, e.g.
+> `ln -s /content/drive/MyDrive/music_captioning_models models` (mount Drive
+> first). Otherwise just re-run step 2 — it is safe and resumable.
 
 ## Example
 

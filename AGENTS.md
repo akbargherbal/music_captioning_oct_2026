@@ -65,7 +65,7 @@ Rejected options (don't switch to them silently):
 ├── AGENTS.md
 ├── README.md
 ├── requirements.txt
-├── notebooks/colab_setup.ipynb     # build + download + demo
+├── notebooks/colab_setup.ipynb     # download + demo
 ├── src/
 │   ├── captioner_hf.py             # transformers 4-bit backend (current)
 │   ├── captioner.py                # llama.cpp subprocess wrapper (alternative)
@@ -81,6 +81,17 @@ Rejected options (don't switch to them silently):
 ```
 
 ## Setup commands
+
+Fresh Colab runtime, in order (all steps idempotent). Colab already provides
+`torch`, `ffmpeg` and `ffprobe`; the HF repos are public, so no token is needed.
+`models/` is ephemeral on Colab — re-run the download, or symlink `models/` to
+Drive to persist it.
+
+```bash
+git clone https://github.com/akbargherbal/music_captioning_oct_2026.git
+cd music_captioning_oct_2026
+pip install -q -r requirements.txt
+```
 
 Current (transformers 4-bit):
 
