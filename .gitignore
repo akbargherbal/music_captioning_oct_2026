@@ -11,7 +11,9 @@ audio/
 *.ogg
 
 # Generated caption JSON (regenerate with scripts/demo.py --out)
-outputs/
+outputs/*
+# ...except committed benchmark results:
+!outputs/Elissa_2008_Ayami_Beek.json
 
 # Build artifacts
 llama.cpp/

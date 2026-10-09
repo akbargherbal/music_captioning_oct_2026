@@ -76,6 +76,7 @@ Rejected options (don't switch to them silently):
 │   └── fixtures/captions/*.txt     # saved example captions
 ├── scripts/
 │   ├── demo.py                     # end-to-end CLI
+│   ├── benchmark.py                # per-track timing + VRAM benchmark
 │   └── build_llamacpp.sh           # idempotent CUDA build (alternative runtime)
 └── models/                         # gitignored
 ```

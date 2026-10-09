@@ -118,6 +118,19 @@ Only tags the caption actually mentions are emitted (no guessing, e.g. no vocal
 gender unless stated). Long tracks are split into ~60 s chunks, captioned
 separately, and merged with order-preserving de-duplication.
 
+## Benchmarking
+
+Time captioning for one file or a whole album (model loaded once, reused):
+
+```bash
+python scripts/benchmark.py "/content/Elissa - 2008 Ayami Beek" \
+  --out outputs/Elissa_2008_Ayami_Beek.json
+```
+
+Writes one JSON with per-track chunk timings, caption seconds, peak VRAM, tags
+and Suno prompts, plus album totals and a `realtime_factor` (caption seconds ÷
+audio seconds). See `docs/RESULTS.md` for measured numbers.
+
 ## Alternative backend: llama.cpp GGUF
 
 The original pinned GGUF runtime is kept in `src/captioner.py` +
@@ -144,6 +157,7 @@ src/captioner.py     # llama.cpp GGUF wrapper (alternative)
 src/tags.py          # lexicon + to_suno()
 src/lexicon.json     # instruments / vocals / production terms
 scripts/demo.py      # end-to-end CLI
+scripts/benchmark.py # per-track timing + VRAM benchmark
 scripts/build_llamacpp.sh
 tests/               # pure-Python, no GPU/model needed
 docs/RESULTS.md      # real measured VRAM + timing

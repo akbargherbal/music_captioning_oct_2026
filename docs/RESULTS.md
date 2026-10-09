@@ -100,6 +100,51 @@ vintage, sample
 - The reference pipeline needs no 30-second-boundary workaround (that bug was
   specific to stock llama.cpp).
 
+## Run 2 — album benchmark (`Elissa - 2008 Ayami Beek`)
+
+- Input: `/content/Elissa - 2008 Ayami Beek` (11 tracks, 320 kbps MP3)
+- Output: `outputs/Elissa_2008_Ayami_Beek.json`
+- Model loaded **once**, reused; 60 s chunks
+- Reproduce: `python scripts/benchmark.py "/content/Elissa - 2008 Ayami Beek" --out outputs/Elissa_2008_Ayami_Beek.json`
+
+### Totals
+
+| Metric | Value |
+|---|---|
+| Tracks | 11 (0 errors) |
+| Total audio | 3034.3 s (50.6 min) |
+| Chunks | 56 |
+| Caption time | 617.0 s (10.3 min) |
+| Wall time (captioning only) | 623.4 s |
+| Model load (once) | 39.3 s |
+| Realtime factor | **0.203** (≈ 4.9× faster than real time) |
+| Peak VRAM | 8228 MiB (~8.0 GiB) |
+
+### Per-track
+
+| Track | Audio (s) | Chunks | Caption (s) |
+|---|---:|---:|---:|
+| 01. Ayami Bik | 279.7 | 5 | 57.9 |
+| 02. Khod Balak Alaya | 329.2 | 6 | 63.8 |
+| 03. Betmon | 244.5 | 5 | 52.0 |
+| 04. Ya Alam | 313.4 | 6 | 61.4 |
+| 05. Law Ma Tegi | 274.2 | 5 | 56.2 |
+| 06. Mish Ktir Alayk | 268.9 | 5 | 55.4 |
+| 07. Adik Erift | 290.6 | 5 | 55.5 |
+| 08. Ala Hobbak | 218.1 | 4 | 47.9 |
+| 09. Ana Bastaghrib Aleh | 268.1 | 5 | 52.8 |
+| 10. Sahar Einy | 275.0 | 5 | 58.3 |
+| 11. Awakhir El Shity | 272.6 | 5 | 55.8 |
+| **Total** | **3034.3** | **56** | **617.0** |
+
+### Example tags (track 01, "Ayami Bik")
+
+```
+instruments: violin, synth, drum machine, synth bass, kick, darbuka, ney, synth strings, synth pads
+vocals:      female vocal, harmonies, melisma, vibrato
+production:  melody, four-on-the-floor, groove, melodic, clean, dynamic, punchy, bassline, layered, reverb, lush, spacious
+```
+
 ## GPU smoke test
 
 Kept out of `pytest` (manual, needs GPU + model). Reproduce with:
