@@ -158,7 +158,17 @@
       "status": "ok",
       "total_caption_seconds": 493.5,
       "completed_at": "2026-10-10T03:47:54"
+    },
+    "FADL_SHAKER/10.Saharni El Shoq.2005": {
+      "path": "FADL_SHAKER/10.Saharni El Shoq.2005.json",
+      "source_dir": "/content/Fadl Shaker.Full Discography.BY.RoMaNTiCPoET/10.Saharni El Shoq.2005",
+      "track_count": 14,
+      "failed_count": 0,
+      "skipped_count": 0,
+      "status": "ok",
+      "total_caption_seconds": 756.7,
+      "completed_at": "2026-10-10T04:00:35"
     }
   },
-  "updated_at": "2026-10-10T03:47:54"
+  "updated_at": "2026-10-10T04:00:35"
 }
