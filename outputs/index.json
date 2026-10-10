@@ -168,7 +168,17 @@
       "status": "ok",
       "total_caption_seconds": 756.7,
       "completed_at": "2026-10-10T04:00:35"
+    },
+    "FADL_SHAKER/11.Fadl Shaker&Yara.Akhedny Ma'ak.2006": {
+      "path": "FADL_SHAKER/11.Fadl Shaker&Yara.Akhedny Ma'ak.2006.json",
+      "source_dir": "/content/Fadl Shaker.Full Discography.BY.RoMaNTiCPoET/11.Fadl Shaker&Yara.Akhedny Ma'ak.2006",
+      "track_count": 2,
+      "failed_count": 0,
+      "skipped_count": 0,
+      "status": "ok",
+      "total_caption_seconds": 136.2,
+      "completed_at": "2026-10-10T04:02:52"
     }
   },
-  "updated_at": "2026-10-10T04:00:35"
+  "updated_at": "2026-10-10T04:02:52"
 }
