@@ -198,7 +198,17 @@
       "status": "ok",
       "total_caption_seconds": 106.4,
       "completed_at": "2026-10-10T04:16:14"
+    },
+    "FADL_SHAKER/14.Ba’da Aalbal.2009": {
+      "path": "FADL_SHAKER/14.Ba’da Aalbal.2009.json",
+      "source_dir": "/content/Fadl Shaker.Full Discography.BY.RoMaNTiCPoET/14.Ba’da Aalbal.2009",
+      "track_count": 10,
+      "failed_count": 0,
+      "skipped_count": 0,
+      "status": "ok",
+      "total_caption_seconds": 602.6,
+      "completed_at": "2026-10-10T04:26:19"
     }
   },
-  "updated_at": "2026-10-10T04:16:14"
+  "updated_at": "2026-10-10T04:26:19"
 }
