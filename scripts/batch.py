@@ -53,9 +53,23 @@ from src.tags import CATEGORIES  # noqa: E402
 
 DEFAULT_ROOT = "gs://akbar-december-2024-backup/DISCOGRAPHY"
 
+# Repo-local fallback identity. A fresh Colab runtime has no global
+# user.name/user.email, so `git commit` fails and every album checkpoint is lost
+# (writing JSON + manifest without ever pushing). Set these if unset.
+FALLBACK_GIT_NAME = "akbargherbal"
+FALLBACK_GIT_EMAIL = "akbargherbal@users.noreply.github.com"
+
 
 def _run(cmd: list[str]) -> subprocess.CompletedProcess[str]:
     return subprocess.run(cmd, capture_output=True, text=True, check=False)
+
+
+def ensure_git_identity(repo: Path) -> None:
+    """Set a repo-local commit identity when none is configured."""
+    if not _run(["git", "-C", str(repo), "config", "user.name"]).stdout.strip():
+        _run(["git", "-C", str(repo), "config", "user.name", FALLBACK_GIT_NAME])
+    if not _run(["git", "-C", str(repo), "config", "user.email"]).stdout.strip():
+        _run(["git", "-C", str(repo), "config", "user.email", FALLBACK_GIT_EMAIL])
 
 
 def list_gs_mp3(root: str) -> list[str]:
@@ -79,6 +93,7 @@ def download_track(uri: str, dest: Path) -> None:
 
 def git_checkpoint(repo: Path, message: str, push: bool, retries: int = 3) -> None:
     """Commit everything and (optionally) push, retrying transient failures."""
+    ensure_git_identity(repo)
     _run(["git", "-C", str(repo), "add", "-A"])
     if _run(["git", "-C", str(repo), "diff", "--cached", "--quiet"]).returncode == 0:
         print("  (no changes to commit)")
