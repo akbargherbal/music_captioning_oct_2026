@@ -188,7 +188,17 @@
       "status": "ok",
       "total_caption_seconds": 690.2,
       "completed_at": "2026-10-10T04:14:26"
+    },
+    "FADL_SHAKER/13.Ya Mesaharny El Lail.2007": {
+      "path": "FADL_SHAKER/13.Ya Mesaharny El Lail.2007.json",
+      "source_dir": "/content/Fadl Shaker.Full Discography.BY.RoMaNTiCPoET/13.Ya Mesaharny El Lail.2007",
+      "track_count": 2,
+      "failed_count": 0,
+      "skipped_count": 0,
+      "status": "ok",
+      "total_caption_seconds": 106.4,
+      "completed_at": "2026-10-10T04:16:14"
     }
   },
-  "updated_at": "2026-10-10T04:14:26"
+  "updated_at": "2026-10-10T04:16:14"
 }
