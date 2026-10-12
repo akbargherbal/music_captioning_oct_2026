@@ -288,7 +288,17 @@
       "status": "ok",
       "total_caption_seconds": 1062.7,
       "completed_at": "2026-10-12T19:49:28"
+    },
+    "ARAB_MAQAM_ROCK/GRP 8": {
+      "path": "ARAB_MAQAM_ROCK/GRP 8.json",
+      "source_dir": "/content/ARAB_MAQAM_ROCK/GRP 8",
+      "track_count": 20,
+      "failed_count": 0,
+      "skipped_count": 0,
+      "status": "ok",
+      "total_caption_seconds": 1015.3,
+      "completed_at": "2026-10-12T20:08:40"
     }
   },
-  "updated_at": "2026-10-12T19:49:28"
+  "updated_at": "2026-10-12T20:08:40"
 }
