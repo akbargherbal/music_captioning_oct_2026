@@ -91,7 +91,20 @@
       "rtf": 6.129,
       "completed_at": "2026-10-28T06:17:28Z",
       "model_revision": "b83c3d79a6d98bcffaf8f9ed112c90aa887887bc"
+    },
+    "ELISSA/Elissa - 2012  As3ad Wa7da": {
+      "path": "ELISSA/abc/Elissa - 2012  As3ad Wa7da.json",
+      "status": "partial",
+      "track_count": 14,
+      "ok": 13,
+      "flagged": 0,
+      "failed": 1,
+      "total_audio_seconds": 4162.6,
+      "total_gpu_seconds": 719.0,
+      "rtf": 5.789,
+      "completed_at": "2026-10-28T06:30:14Z",
+      "model_revision": "b83c3d79a6d98bcffaf8f9ed112c90aa887887bc"
     }
   },
-  "updated_at": "2026-10-28T06:17:28Z"
+  "updated_at": "2026-10-28T06:30:14Z"
 }
