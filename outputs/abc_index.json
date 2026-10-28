@@ -300,7 +300,21 @@
       "rtf": 6.069,
       "completed_at": "2026-10-28T08:46:37Z",
       "model_revision": "b83c3d79a6d98bcffaf8f9ed112c90aa887887bc"
+    },
+    "FADL_SHAKER/15.The Best Of (Al Rawae3).2010": {
+      "path": "FADL_SHAKER/abc/15.The Best Of (Al Rawae3).2010.json",
+      "status": "partial",
+      "track_count": 16,
+      "ok": 14,
+      "flagged": 1,
+      "failed": 1,
+      "missing_track_ids": [],
+      "total_audio_seconds": 4419.2,
+      "total_gpu_seconds": 840.7,
+      "rtf": 5.257,
+      "completed_at": "2026-10-28T09:01:30Z",
+      "model_revision": "b83c3d79a6d98bcffaf8f9ed112c90aa887887bc"
     }
   },
-  "updated_at": "2026-10-28T08:46:37Z"
+  "updated_at": "2026-10-28T09:01:30Z"
 }
