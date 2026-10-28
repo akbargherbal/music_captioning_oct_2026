@@ -146,7 +146,21 @@
       "rtf": 5.378,
       "completed_at": "2026-10-28T07:02:55Z",
       "model_revision": "b83c3d79a6d98bcffaf8f9ed112c90aa887887bc"
+    },
+    "FADL_SHAKER/04.Fouk El Shouk.2000": {
+      "path": "FADL_SHAKER/abc/04.Fouk El Shouk.2000.json",
+      "status": "done",
+      "track_count": 9,
+      "ok": 9,
+      "flagged": 0,
+      "failed": 0,
+      "missing_track_ids": [],
+      "total_audio_seconds": 3682.4,
+      "total_gpu_seconds": 764.2,
+      "rtf": 4.819,
+      "completed_at": "2026-10-28T07:16:18Z",
+      "model_revision": "b83c3d79a6d98bcffaf8f9ed112c90aa887887bc"
     }
   },
-  "updated_at": "2026-10-28T07:02:55Z"
+  "updated_at": "2026-10-28T07:16:18Z"
 }
