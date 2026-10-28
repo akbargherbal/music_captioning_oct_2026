@@ -39,7 +39,20 @@
       "rtf": 5.745,
       "completed_at": "2026-10-28T05:07:27Z",
       "model_revision": "b83c3d79a6d98bcffaf8f9ed112c90aa887887bc"
+    },
+    "ELISSA/Elissa - 2004 Ahla Donya": {
+      "path": "ELISSA/abc/Elissa - 2004 Ahla Donya.json",
+      "status": "done",
+      "track_count": 14,
+      "ok": 13,
+      "flagged": 1,
+      "failed": 0,
+      "total_audio_seconds": 3739.5,
+      "total_gpu_seconds": 651.5,
+      "rtf": 5.74,
+      "completed_at": "2026-10-28T05:19:06Z",
+      "model_revision": "b83c3d79a6d98bcffaf8f9ed112c90aa887887bc"
     }
   },
-  "updated_at": "2026-10-28T05:07:27Z"
+  "updated_at": "2026-10-28T05:19:06Z"
 }
