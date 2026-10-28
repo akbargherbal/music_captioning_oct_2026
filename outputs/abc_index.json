@@ -26,7 +26,20 @@
       "rtf": 4.986,
       "completed_at": "2026-10-28T04:58:36Z",
       "model_revision": "b83c3d79a6d98bcffaf8f9ed112c90aa887887bc"
+    },
+    "ELISSA/Elissa - 2002 Aayshalak": {
+      "path": "ELISSA/abc/Elissa - 2002 Aayshalak.json",
+      "status": "done",
+      "track_count": 10,
+      "ok": 10,
+      "flagged": 0,
+      "failed": 0,
+      "total_audio_seconds": 2823.5,
+      "total_gpu_seconds": 491.5,
+      "rtf": 5.745,
+      "completed_at": "2026-10-28T05:07:27Z",
+      "model_revision": "b83c3d79a6d98bcffaf8f9ed112c90aa887887bc"
     }
   },
-  "updated_at": "2026-10-28T04:58:36Z"
+  "updated_at": "2026-10-28T05:07:27Z"
 }
