@@ -202,7 +202,21 @@
       "rtf": 5.195,
       "completed_at": "2026-10-28T07:51:42Z",
       "model_revision": "b83c3d79a6d98bcffaf8f9ed112c90aa887887bc"
+    },
+    "FADL_SHAKER/08.Hafla 2004": {
+      "path": "FADL_SHAKER/abc/08.Hafla 2004.json",
+      "status": "partial",
+      "track_count": 10,
+      "ok": 8,
+      "flagged": 0,
+      "failed": 2,
+      "missing_track_ids": [],
+      "total_audio_seconds": 2786.2,
+      "total_gpu_seconds": 590.0,
+      "rtf": 4.722,
+      "completed_at": "2026-10-28T08:02:14Z",
+      "model_revision": "b83c3d79a6d98bcffaf8f9ed112c90aa887887bc"
     }
   },
-  "updated_at": "2026-10-28T07:51:42Z"
+  "updated_at": "2026-10-28T08:02:14Z"
 }
