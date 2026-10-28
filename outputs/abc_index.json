@@ -132,7 +132,21 @@
       "rtf": 5.298,
       "completed_at": "2026-10-28T06:54:33Z",
       "model_revision": "b83c3d79a6d98bcffaf8f9ed112c90aa887887bc"
+    },
+    "FADL_SHAKER/03.El Hob El Qadeem.2000": {
+      "path": "FADL_SHAKER/abc/03.El Hob El Qadeem.2000.json",
+      "status": "done",
+      "track_count": 8,
+      "ok": 8,
+      "flagged": 0,
+      "failed": 0,
+      "missing_track_ids": [],
+      "total_audio_seconds": 2510.1,
+      "total_gpu_seconds": 466.7,
+      "rtf": 5.378,
+      "completed_at": "2026-10-28T07:02:55Z",
+      "model_revision": "b83c3d79a6d98bcffaf8f9ed112c90aa887887bc"
     }
   },
-  "updated_at": "2026-10-28T06:54:33Z"
+  "updated_at": "2026-10-28T07:02:55Z"
 }
