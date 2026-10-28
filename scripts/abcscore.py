@@ -341,7 +341,13 @@ def qc_track(raw_dir: Path, duration_s: float | None, *,
         if name not in parsed.voices:
             flags.append(f"voice_missing:{name}")
 
-    instrumental = ("(music)" in file.lower()) and parsed.notes_vocal < 50
+    # Instrumental *versions* are named "(Music)" (Fadl) or just "Music"
+    # (Elissa, Ahla Donya track 14). Name alone is not enough: a sung track
+    # that lost its vocal line must still be flagged.
+    name = Path(file).stem.lower()
+    name_says_instrumental = bool(
+        re.search(r"\b(music|instrumental|karaoke)\b", name))
+    instrumental = name_says_instrumental and parsed.notes_vocal < 50
     if parsed.notes_vocal < 50 and not instrumental:
         flags.append("vocal_sparse")
 

@@ -30,6 +30,9 @@ import json
 import subprocess
 import sys
 import time
+import urllib.error
+import urllib.parse
+import urllib.request
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -116,6 +119,45 @@ def ensure_git_identity(repo: Path) -> None:
             run(["git", "-C", str(repo), "config", field, value])
 
 
+GCS_WILDCARDS = set("*?[]")
+
+
+def download_object_api(uri: str, dest: Path) -> None:
+    """Download one object by exact name via the GCS JSON API.
+
+    The gcloud CLI treats ``[``/``]``/``*``/``?`` in *both* source and
+    destination as URL wildcards, so ``13.Kermalak [Remix].mp3`` cannot be
+    copied with it at all. The API has no wildcard language.
+    """
+    if not uri.startswith("gs://"):
+        raise BatchError(f"not a GCS URI: {uri}")
+    bucket, _, obj = uri[5:].partition("/")
+    if not bucket or not obj:
+        raise BatchError(f"cannot parse GCS URI: {uri}")
+    token = run(["gcloud", "auth", "print-access-token"])
+    if token.returncode != 0 or not token.stdout.strip():
+        raise BatchError("cannot get a gcloud access token for the GCS API")
+    url = (f"https://storage.googleapis.com/storage/v1/b/"
+           f"{urllib.parse.quote(bucket, safe='')}/o/"
+           f"{urllib.parse.quote(obj, safe='')}?alt=media")
+    request = urllib.request.Request(
+        url, headers={"Authorization": f"Bearer {token.stdout.strip()}"})
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    tmp = dest.with_suffix(dest.suffix + ".part")
+    try:
+        with urllib.request.urlopen(request, timeout=300) as response, \
+                tmp.open("wb") as fh:
+            while True:
+                block = response.read(1 << 20)
+                if not block:
+                    break
+                fh.write(block)
+        tmp.replace(dest)
+    except (urllib.error.URLError, OSError) as exc:
+        tmp.unlink(missing_ok=True)
+        raise BatchError(f"GCS API download failed for {uri}: {exc}") from exc
+
+
 def download_album(rows: list[dict], album_dir: Path,
                    log: Path) -> None:
     album_dir.mkdir(parents=True, exist_ok=True)
@@ -123,10 +165,13 @@ def download_album(rows: list[dict], album_dir: Path,
         dest = album_dir / row["file"]
         if dest.is_file() and dest.stat().st_size > 0:
             continue
-        proc = run(["gcloud", "storage", "cp", row["source_uri"], str(dest)],
-                   log=log)
-        if proc.returncode != 0:
-            raise BatchError(f"download failed: {row['source_uri']}")
+        if GCS_WILDCARDS & set(row["source_uri"] + str(dest)):
+            download_object_api(row["source_uri"], dest)
+        else:
+            proc = run(["gcloud", "storage", "cp", row["source_uri"], str(dest)],
+                       log=log)
+            if proc.returncode != 0:
+                raise BatchError(f"download failed: {row['source_uri']}")
     missing = [r["file"] for r in rows if not (album_dir / r["file"]).is_file()]
     if missing:
         raise BatchError(f"{len(missing)} track(s) missing after download: "

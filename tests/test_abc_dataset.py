@@ -3,7 +3,7 @@
 import json
 from pathlib import Path
 
-from abcscore import parse_abc, strip_chords
+from abcscore import parse_abc, qc_track, strip_chords
 
 from build_abc_dataset import (
     assign_splits,
@@ -56,6 +56,19 @@ def test_parse_abc_voices_notes_and_chords():
     assert parsed.key == "Em"
     assert parsed.tempo_bpm == 101.0
     assert parsed.measures == 2
+
+
+def test_music_named_instrumental_is_not_flagged_vocal_sparse(tmp_path: Path):
+    # ELISSA's "14.Music.mp3" has zero Vocal notes; that is an instrumental,
+    # not a failed vocal transcription. A sung filename must still flag.
+    ins_only = SAMPLE_ABC.split("V: Vocal\n")[0] + "V: Ins\nZ|e2f2g2b2|\n"
+    (tmp_path / "score.abc").write_text(ins_only, encoding="utf-8")
+    music = qc_track(tmp_path, 140.0, file="14.Music.mp3")
+    sung = qc_track(tmp_path, 140.0, file="14.Song.mp3")
+    assert music["instrumental"] is True
+    assert "vocal_sparse" not in music["flags"]
+    assert sung["instrumental"] is False
+    assert "vocal_sparse" in sung["flags"]
 
 
 def test_dedupe_by_hash_and_pointer_collapses_one_group():
