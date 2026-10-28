@@ -53,7 +53,10 @@ def main(argv: list[str] | None = None) -> int:
     batch_args = list(args.batch_args)
     if batch_args and batch_args[0] == "--":
         batch_args = batch_args[1:]
-    cmd = [sys.executable, "-u", str(REPO_ROOT / "scripts" / "batch.py"), *batch_args]
+    script = Path(args.script)
+    if not script.is_absolute():
+        script = REPO_ROOT / script
+    cmd = [sys.executable, "-u", str(script), *batch_args]
 
     args.log.parent.mkdir(parents=True, exist_ok=True)
     quick = 0
