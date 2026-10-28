@@ -3,17 +3,22 @@
 
 One album is the checkpoint. For each pending album:
 
-1. download its MP3s from GCS (skip-if-present) and verify the count,
+1. download its MP3s from GCS (skip-if-present). A single bad track is
+   logged, recorded, and skipped; the rest of the album still runs and the
+   album is packed as ``partial``,
 2. run ``transcribe.sh --device cuda --full`` into ``work/out/<artist>/<album>``,
 3. run the §9 QC gate per track (ok / flagged / failed),
-4. ``gcloud storage rsync -r`` the raw tree and **verify it landed**,
+4. archive the raw tree and **verify it landed** in GCS,
 5. pack ``outputs/<artist>/abc/<album>.json`` + ``outputs/abc_index.json``,
    upload the packed JSON to GCS and **verify it landed**,
 6. commit ``outputs/abc_index.json`` + ``scripts/`` + ``docs/`` and push,
    verifying the commit is not ahead of origin.
 
 Hard rule: a failed upload or a commit that did not land aborts the session
-before the next album starts. ABC text is never ``git add``-ed (§15.1 open).
+before the next album starts. Download failures only abort when they look
+systemic (auth/permission/disk), when no track in the album is usable, or
+when more than ``--max-download-failures`` tracks fail. ABC text is never
+``git add``-ed (§15.1 open).
 
 Usage:
     python3 scripts/abc_batch.py --artist ELISSA --max-minutes 170
@@ -100,15 +105,15 @@ def album_pending(key: str, index: dict, outputs: Path,
     entry = index["albums"].get(key)
     if force or not entry:
         return True
-    rel = entry.get("path")
-    local = outputs / rel if rel else None
-    if entry.get("status") == "done" and local and local.is_file():
+    status = entry.get("status")
+    if status == "done":
+        # Durable in GCS/git even if the local packed file is gone.
         return False
-    if retry_failed and entry.get("status") in ("partial", "failed"):
-        return True
-    # Index says done but the local packed file is absent: the album is safe
-    # in GCS/git, so do not spend GPU on it; restore happens on demand.
-    return not (entry.get("status") == "done" and rel)
+    if status in ("partial", "failed"):
+        # Skipped by default: one poison track must not cause a retry every
+        # session. --retry-failed re-runs the album to fill the gaps.
+        return retry_failed
+    return True
 
 
 def ensure_git_identity(repo: Path) -> None:
@@ -158,24 +163,95 @@ def download_object_api(uri: str, dest: Path) -> None:
         raise BatchError(f"GCS API download failed for {uri}: {exc}") from exc
 
 
-def download_album(rows: list[dict], album_dir: Path,
-                   log: Path) -> None:
+# A download error containing one of these is not about one track: every
+# subsequent download will fail the same way, so the session must stop.
+SYSTEMIC_DOWNLOAD_MARKERS = (
+    "401", "403", "unauthorized", "forbidden", "permission denied",
+    "invalid_grant", "reauthentication", "no space left", "disk quota",
+    "quota exceeded", "could not resolve host", "name or service not known",
+    "connection refused", "network is unreachable",
+    "cannot get a gcloud access token",
+)
+
+
+def is_systemic_download_error(message: str) -> bool:
+    low = message.lower()
+    return any(marker in low for marker in SYSTEMIC_DOWNLOAD_MARKERS)
+
+
+def append_log(log: Path, text: str) -> None:
+    log.parent.mkdir(parents=True, exist_ok=True)
+    with log.open("a", encoding="utf-8") as fh:
+        fh.write(text)
+        if text and not text.endswith("\n"):
+            fh.write("\n")
+
+
+def download_track(row: dict, album_dir: Path, log: Path) -> None:
+    """Download one track or raise BatchError with a useful message."""
+    dest = album_dir / row["file"]
+    if dest.is_file() and dest.stat().st_size > 0:
+        return
+    if GCS_WILDCARDS & set(row["source_uri"] + str(dest)):
+        download_object_api(row["source_uri"], dest)
+        return
+    cmd = ["gcloud", "storage", "cp", row["source_uri"], str(dest)]
+    proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
+    append_log(log, f"\n$ {' '.join(cmd)}\n{proc.stdout}{proc.stderr}")
+    if proc.returncode != 0:
+        lines = [line.strip() for line in
+                 (proc.stderr or proc.stdout or "").splitlines() if line.strip()]
+        detail = " | ".join(lines[-2:]) if lines else f"exit {proc.returncode}"
+        raise BatchError(f"download failed: {row['source_uri']}: {detail}")
+
+
+def download_album(rows: list[dict], album_dir: Path, log: Path,
+                   *, strict: bool = False,
+                   max_failures: int = 3) -> tuple[list[dict], list[dict]]:
+    """Download what is available; return ``(available_rows, failures)``.
+
+    A single missing/corrupt object is a data problem, not a session problem:
+    log it, keep going, and let the album be packed as ``partial``. Auth,
+    permission, disk and network failures abort immediately. ``strict``
+    restores the old all-or-nothing behaviour.
+    """
     album_dir.mkdir(parents=True, exist_ok=True)
+    available: list[dict] = []
+    failures: list[dict] = []
     for row in rows:
-        dest = album_dir / row["file"]
-        if dest.is_file() and dest.stat().st_size > 0:
-            continue
-        if GCS_WILDCARDS & set(row["source_uri"] + str(dest)):
-            download_object_api(row["source_uri"], dest)
-        else:
-            proc = run(["gcloud", "storage", "cp", row["source_uri"], str(dest)],
-                       log=log)
-            if proc.returncode != 0:
-                raise BatchError(f"download failed: {row['source_uri']}")
-    missing = [r["file"] for r in rows if not (album_dir / r["file"]).is_file()]
-    if missing:
-        raise BatchError(f"{len(missing)} track(s) missing after download: "
-                         f"{missing[:3]}")
+        try:
+            download_track(row, album_dir, log)
+            available.append(row)
+        except BatchError as exc:
+            message = str(exc)
+            # Do not let a track name like "403.mp3" look like an HTTP error.
+            probe = message.replace(row["source_uri"], "")
+            if is_systemic_download_error(probe):
+                raise BatchError(
+                    f"systemic download failure; aborting album: {message}"
+                ) from exc
+            failures.append({
+                "track_id": row["track_id"],
+                "file": row["file"],
+                "source_uri": row["source_uri"],
+                "error": message,
+            })
+            print(f"  download failed, skipping: {row['file']}: {message}")
+            append_log(log, f"SKIP {row['track_id']}: {message}\n")
+
+    if strict and failures:
+        raise BatchError(
+            f"{len(failures)} download(s) failed (--strict-downloads): "
+            f"{[f['file'] for f in failures][:3]}")
+    if not available:
+        raise BatchError(
+            f"no track could be downloaded; {len(failures)} failed "
+            f"(first: {failures[0]['error'] if failures else 'unknown'})")
+    if len(failures) > max_failures:
+        raise BatchError(
+            f"{len(failures)} downloads failed (> {max_failures}); "
+            f"treating as systemic")
+    return available, failures
 
 
 def gcs_inventory(uri: str) -> dict[str, int]:
@@ -375,7 +451,15 @@ def main(argv: list[str] | None = None) -> int:
                     help="stop before an album that would overrun; 0 = no limit")
     ap.add_argument("--list", action="store_true")
     ap.add_argument("--force", action="store_true")
-    ap.add_argument("--retry-failed", action="store_true")
+    ap.add_argument("--retry-failed", action="store_true",
+                    help="retry albums left partial/failed (for example after "
+                         "a skipped download); partial albums are skipped by "
+                         "default so one poison track cannot loop every session")
+    ap.add_argument("--strict-downloads", action="store_true",
+                    help="abort the album if any single track fails to download")
+    ap.add_argument("--max-download-failures", type=int, default=3,
+                    help="treat more than N per-album download failures as "
+                         "systemic (default 3)")
     ap.add_argument("--no-push", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--amr-dir", type=Path, default=Path("/content/amr"))
@@ -453,7 +537,13 @@ def main(argv: list[str] | None = None) -> int:
         album_dir = args.work_dir / "audio" / artist / album
         out_dir = args.work_dir / "out" / artist / album
 
-        download_album(tracks, album_dir, log)
+        available, download_failures = download_album(
+            tracks, album_dir, log,
+            strict=args.strict_downloads,
+            max_failures=args.max_download_failures)
+        if download_failures:
+            print(f"  {len(download_failures)} track(s) skipped; continuing "
+                  f"with {len(available)}/{len(tracks)}")
 
         t0 = time.monotonic()
         rc = run_transcribe(album_dir, out_dir, remaining, args.amr_dir, log)
@@ -502,8 +592,11 @@ def main(argv: list[str] | None = None) -> int:
 
         # 3) commit only the index/scripts/docs; ABC text stays out of git
         index = load_index(index_path)
+        counts = f"{n_ok} ok, {n_flagged} flagged, {n_failed} failed"
+        if download_failures:
+            counts += f", {len(download_failures)} skipped"
         message = (f"abc({artist}/{album}): {n_ok + n_flagged} tracks "
-                   f"({n_ok} ok, {n_flagged} flagged, {n_failed} failed)")
+                   f"({counts})")
         commit_checkpoint(args.repo, message, args.no_push, log)
         print(f"  committed: {message}")
 

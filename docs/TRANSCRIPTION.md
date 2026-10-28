@@ -129,7 +129,9 @@ One album at a time is the default and is the right granularity.
 
 Per album the driver:
 
-1. downloads missing MP3s (skip-if-present) and verifies the count;
+1. downloads missing MP3s (skip-if-present); a single bad track is logged,
+   recorded in `failed_tracks`/`missing_track_ids`, and skipped, and the album
+   still runs with the rest;
 2. runs `transcribe.sh <album_dir> --device cuda --full --on-collision suffix
    --time-budget <remaining> --out-dir work/out/<ARTIST>/<album>`;
 3. runs the §9 QC gate per track (`ok` / `flagged` / `failed`);
@@ -145,11 +147,34 @@ A failed upload or an unlanded commit **exits 2**; the supervisor treats 2 as a
 hard stop and does not advance to the next album. Transient failures can be
 retried with the same command after inspection.
 
+### Download failures: skip one track, keep the album
+
+A missing or corrupt object is a data problem, not a session problem. The
+driver logs it, adds it to the album's `failed_tracks` and `missing_track_ids`,
+packs the album as `partial`, uploads and commits it, and moves on. The rest of
+the album is not thrown away.
+
+Hard stops remain for failures where continuing would just fail every
+subsequent track:
+
+| Condition | Behaviour |
+|---|---|
+| One/few tracks 404 or unreadable | skip, log, album `partial`, continue |
+| `401`/`403`, auth/token, permission, disk full, DNS/network down | **exit 2** immediately |
+| Zero tracks usable in the album | **exit 2** |
+| More than `--max-download-failures` (default 3) in one album | **exit 2** (treated as systemic) |
+| `--strict-downloads` | **exit 2** on the first failed track (debugging) |
+
+`partial` albums are **skipped on resume by default**, so one poison track does
+not cause a retry loop every session. To try the gaps again, run the same
+command with `--retry-failed` (optionally `--album "<name>"`).
+
 ### Resume after a disconnect
 
 `work/` is gone; GCS and git are not. Redo Phase 1, `git pull`, then rerun the
-same command. Albums whose index entry is `done` are skipped. `--force` is not
-needed and must not be used (it bypasses the hash guards).
+same command. Albums whose index entry is `done` are skipped; `partial` and
+`failed` albums are skipped too unless `--retry-failed` is passed. `--force` is
+not needed and must not be used (it bypasses the hash guards).
 
 ### Rehearsal
 

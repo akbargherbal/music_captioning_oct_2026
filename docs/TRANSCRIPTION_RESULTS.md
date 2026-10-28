@@ -106,9 +106,35 @@ proposal at the gate: make the audio hash authoritative for grouping (drop the
 normalized-title fallback) and accept whatever val size results; or accept 31 %
 val. Do not let duplicates straddle.
 
+## Bulk run 1 — ELISSA (2026-10-28)
+
+8/8 albums committed; 96 tracks: **95 ok, 0 flagged, 1 failed**.
+
+| Metric | Measured |
+|---|---:|
+| Audio transcribed | 26,374.3 s (7.33 h) |
+| GPU seconds (per-track sum) | 4,614.9 s (1.28 h) |
+| RTF | **5.715×** |
+| Wall, second half (4 albums) | 42.7 min |
+| Archives / packed JSONs in GCS | 8 / 8, size + md5 verified |
+
+Per album: Baddy Doub 10 ok (5.29×), Wakherta Maak 11 (4.99×), Aayshalak 10
+(5.75×), Ahla Donya 14 (5.74×), Bastannak 13 (5.94×), Ayami Beek 11 (6.05×),
+Tesada'a Bemeen 13 (6.13×), As3ad Wa7da 13 ok + 1 failed (5.79×).
+
+**The one failure:** `ELISSA/…/2012  As3ad Wa7da/05. Te3ebt Minnak.mp3` —
+`transcribe.py` wrote every artifact except `score.abc` (`meta.status=no-abc`,
+45.2 s). The album was packed `partial` and committed; the other 13 tracks were
+not lost. Re-run that album with `--retry-failed` to fill the gap.
+
+**Operational note:** one track per album can now fail to download without
+stopping the session (see the runbook). During this run the same class of
+failure did stop it: `gcloud storage cp` treats `[Remix]` as a wildcard, which
+aborted album 5. Both behaviours are now covered by tests.
+
 ## Not measured yet
 
-- Bulk runs, per-album wall time, and corpus QC histograms.
+- Bulk FADL_SHAKER (15 albums) and corpus QC histograms.
 - Unique `audio_sha256` across all 236 tracks (filled at download).
 - Per-track peak VRAM.
 - The §9.2 listening check (12 tracks).
@@ -118,7 +144,7 @@ val. Do not let duplicates straddle.
 
 - Pilot log: the run's `_driver.log` / `meta.json`; VRAM sampler wrote
   `nvidia-smi --query-gpu=memory.used` every 2 s and reported the maximum.
-- `pytest tests/` → **55 passed** on CPU (ABC parse, chord stripping, split
-  integrity, dedupe, quarantine, caption join).
+- `pytest tests/` → **67 passed** on CPU (ABC parse, chord stripping, split
+  integrity, dedupe, quarantine, caption join, download skip/systemic policy).
 - Raw artifacts are stored as one `tar.gz` per album; the pilot's 5.0 MB raw
   tree compressed to 472 KB (≈10.6×).
