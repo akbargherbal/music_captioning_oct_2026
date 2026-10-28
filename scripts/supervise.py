@@ -36,6 +36,9 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--log", type=Path, required=True,
                         help="append every batch run's output here")
+    parser.add_argument("--script", default="scripts/batch.py",
+                        help="repo-relative batch script to supervise "
+                             "(default: scripts/batch.py)")
     parser.add_argument("--max-restarts", type=int, default=30,
                         help="give up after this many attempts (default 30)")
     parser.add_argument("--min-seconds", type=float, default=180.0,
@@ -89,6 +92,11 @@ def main(argv: list[str] | None = None) -> int:
             if rc == 0:
                 emit("[supervisor] batch finished cleanly; stopping.\n")
                 return 0
+
+            if rc == 2:
+                emit("[supervisor] hard stop (rc=2: failed upload/commit); "
+                     "not restarting.\n")
+                return rc
 
             if elapsed < args.min_seconds:
                 quick += 1
