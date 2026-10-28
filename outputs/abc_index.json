@@ -118,7 +118,21 @@
       "rtf": 5.064,
       "completed_at": "2026-10-28T06:45:17Z",
       "model_revision": "b83c3d79a6d98bcffaf8f9ed112c90aa887887bc"
+    },
+    "FADL_SHAKER/02.Bayya'a El Qeloub.1999": {
+      "path": "FADL_SHAKER/abc/02.Bayya'a El Qeloub.1999.json",
+      "status": "partial",
+      "track_count": 8,
+      "ok": 7,
+      "flagged": 0,
+      "failed": 1,
+      "missing_track_ids": [],
+      "total_audio_seconds": 2751.2,
+      "total_gpu_seconds": 519.3,
+      "rtf": 5.298,
+      "completed_at": "2026-10-28T06:54:33Z",
+      "model_revision": "b83c3d79a6d98bcffaf8f9ed112c90aa887887bc"
     }
   },
-  "updated_at": "2026-10-28T06:45:17Z"
+  "updated_at": "2026-10-28T06:54:33Z"
 }
