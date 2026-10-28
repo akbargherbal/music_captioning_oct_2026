@@ -65,7 +65,20 @@
       "rtf": 5.938,
       "completed_at": "2026-10-28T05:57:47Z",
       "model_revision": "b83c3d79a6d98bcffaf8f9ed112c90aa887887bc"
+    },
+    "ELISSA/Elissa - 2008 Ayami Beek": {
+      "path": "ELISSA/abc/Elissa - 2008 Ayami Beek.json",
+      "status": "done",
+      "track_count": 11,
+      "ok": 11,
+      "flagged": 0,
+      "failed": 0,
+      "total_audio_seconds": 3034.2,
+      "total_gpu_seconds": 501.7,
+      "rtf": 6.048,
+      "completed_at": "2026-10-28T06:06:48Z",
+      "model_revision": "b83c3d79a6d98bcffaf8f9ed112c90aa887887bc"
     }
   },
-  "updated_at": "2026-10-28T05:57:47Z"
+  "updated_at": "2026-10-28T06:06:48Z"
 }
