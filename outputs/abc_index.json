@@ -104,7 +104,21 @@
       "rtf": 5.789,
       "completed_at": "2026-10-28T06:30:14Z",
       "model_revision": "b83c3d79a6d98bcffaf8f9ed112c90aa887887bc"
+    },
+    "FADL_SHAKER/01.Walla Zaman.1998": {
+      "path": "FADL_SHAKER/abc/01.Walla Zaman.1998.json",
+      "status": "partial",
+      "track_count": 8,
+      "ok": 6,
+      "flagged": 0,
+      "failed": 2,
+      "missing_track_ids": [],
+      "total_audio_seconds": 2499.2,
+      "total_gpu_seconds": 493.5,
+      "rtf": 5.064,
+      "completed_at": "2026-10-28T06:45:17Z",
+      "model_revision": "b83c3d79a6d98bcffaf8f9ed112c90aa887887bc"
     }
   },
-  "updated_at": "2026-10-28T06:30:14Z"
+  "updated_at": "2026-10-28T06:45:17Z"
 }
