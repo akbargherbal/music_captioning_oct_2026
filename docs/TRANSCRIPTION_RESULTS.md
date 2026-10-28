@@ -122,10 +122,35 @@ Per album: Baddy Doub 10 ok (5.29×), Wakherta Maak 11 (4.99×), Aayshalak 10
 (5.75×), Ahla Donya 14 (5.74×), Bastannak 13 (5.94×), Ayami Beek 11 (6.05×),
 Tesada'a Bemeen 13 (6.13×), As3ad Wa7da 13 ok + 1 failed (5.79×).
 
-**The one failure:** `ELISSA/…/2012  As3ad Wa7da/05. Te3ebt Minnak.mp3` —
-`transcribe.py` wrote every artifact except `score.abc` (`meta.status=no-abc`,
-45.2 s). The album was packed `partial` and committed; the other 13 tracks were
-not lost. Re-run that album with `--retry-failed` to fill the gap.
+### Known failure — deferred
+
+| Field | Value |
+|---|---|
+| Track | `ELISSA/Elissa - 2012  As3ad Wa7da/05. Te3ebt Minnak.mp3` |
+| Album status | `partial` — 13 ok, 0 flagged, 1 failed |
+| Failure | `meta.status=no-abc`: every side artifact was written (`events.json`, `tokens.json`, `melody*.mid`, `chord.lab`, …) **except `score.abc`** |
+| Duration / GPU | 303.778 s / 45.2 s |
+| Source sha256 | `ce223c882e12f4a044d0f82e1136d3527a1c7b225d3eafb1a6ab60829f29178c` |
+| Album JSON | `outputs/ELISSA/abc/Elissa - 2012  As3ad Wa7da.json` |
+| Raw archive | `gs://akbar-december-2024-backup/TRANSCRIPTS/ELISSA/Elissa - 2012  As3ad Wa7da.tar.gz` |
+| Checkpoint commit | `17044d5` |
+
+The other 13 tracks are complete and committed; nothing was lost. The track was
+**not retried in this session** (deferred by the user). Because `partial`
+albums are skipped by default, later ELISSA runs will not pick it up
+automatically.
+
+To retry just this track later (needs the GPU; `transcribe.py` re-runs a
+`no-abc` track automatically and skips the 13 `ok` ones):
+
+```bash
+cd /content/mc && python3 scripts/abc_batch.py \
+  --artist ELISSA --album "Elissa - 2012  As3ad Wa7da" \
+  --retry-failed --max-minutes 30
+```
+
+If it produces `no-abc` again, record it as a model/audio limitation; do not
+hand-edit an ABC.
 
 **Operational note:** one track per album can now fail to download without
 stopping the session (see the runbook). During this run the same class of
