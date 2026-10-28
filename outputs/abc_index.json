@@ -1,4 +1,19 @@
 {
   "version": 1,
-  "albums": {}
+  "albums": {
+    "ELISSA/Elissa - 1998 Baddy Doub": {
+      "path": "ELISSA/abc/Elissa - 1998 Baddy Doub.json",
+      "status": "done",
+      "track_count": 10,
+      "ok": 10,
+      "flagged": 0,
+      "failed": 0,
+      "total_audio_seconds": 2547.1,
+      "total_gpu_seconds": 481.1,
+      "rtf": 5.294,
+      "completed_at": "2026-10-28T04:48:09Z",
+      "model_revision": "b83c3d79a6d98bcffaf8f9ed112c90aa887887bc"
+    }
+  },
+  "updated_at": "2026-10-28T04:48:09Z"
 }
