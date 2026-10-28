@@ -157,9 +157,98 @@ stopping the session (see the runbook). During this run the same class of
 failure did stop it: `gcloud storage cp` treats `[Remix]` as a wildcard, which
 aborted album 5. Both behaviours are now covered by tests.
 
+## Bulk run — final corpus status (2026-10-28)
+
+All **23 / 23 albums** committed; FADL finished in 145.0 min with supervisor
+`exit=0`.
+
+| Final totals | Value |
+|---|---:|
+| Albums | **23** (8 ELISSA + 15 FADL) |
+| Tracks | **236** |
+| `ok` | **224** |
+| `flagged` | **3** |
+| `failed` | **9** (`no-abc`) |
+| Audio | **19.188 h** |
+| GPU seconds (per-track sum) | 12,738 s (212.3 min, 3.54 h) |
+| RTF | **5.423×** |
+| Active wall | 227.7 min (3.80 h) |
+| GCS objects verified | **46 / 46** (23 archives + 23 JSONs, size + md5) |
+
+| Artist | Albums | Tracks | ok | flagged | failed | Audio | RTF |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| ELISSA | 8 | 96 | 95 | 0 | 1 | 7.33 h | 5.715× |
+| FADL_SHAKER | 15 | 140 | 129 | 3 | 8 | 11.86 h | 5.257× |
+
+### FADL per album
+
+| Album | Tracks | ok | flagged | failed | Audio (h) | RTF |
+|---|---:|---:|---:|---:|---:|---:|
+| 01.Walla Zaman.1998 | 8 | 6 | 0 | 2 | 0.69 | 5.064 |
+| 02.Bayya'a El Qeloub.1999 | 8 | 7 | 0 | 1 | 0.76 | 5.298 |
+| 03.El Hob El Qadeem.2000 | 8 | 8 | 0 | 0 | 0.70 | 5.378 |
+| 04.Fouk El Shouk.2000 | 9 | 9 | 0 | 0 | 1.02 | 4.819 |
+| 05.Hobak Khayal.2001 | 10 | 9 | 0 | 1 | 0.93 | 5.417 |
+| 06.Sidi Rohi.2003 | 11 | 11 | 0 | 0 | 0.84 | 4.574 |
+| 07.Fadl Shaker.2003 | 11 | 10 | 1 | 0 | 1.04 | 5.195 |
+| 08.Hafla 2004 | 10 | 8 | 0 | 2 | 0.77 | 4.722 |
+| 09.Arabian Night.2004 | 9 | 8 | 1 | 0 | 0.80 | 5.293 |
+| 10.Saharni El Shoq.2005 | 14 | 13 | 0 | 1 | 1.00 | 5.561 |
+| 11.Fadl Shaker&Yara.Akhedny Ma'ak.2006 | 2 | 2 | 0 | 0 | 0.17 | 6.325 |
+| 12.Allah Alam.2006 | 12 | 12 | 0 | 0 | 0.93 | 5.653 |
+| 13.Ya Mesaharny El Lail.2007 | 2 | 2 | 0 | 0 | 0.14 | 6.870 |
+| 14.Ba’da Aalbal.2009 | 10 | 10 | 0 | 0 | 0.82 | 6.069 |
+| 15.The Best Of (Al Rawae3).2010 | 16 | 14 | 1 | 1 | 1.23 | 5.257 |
+
+### Failed tracks — all 9 (`no-abc`)
+
+Every side artifact was written (`events.json`, `tokens.json`, `melody*.mid`,
+`chord.lab`, …) except `score.abc`; `meta.status=no-abc`. The raw artifacts are
+in the album archive in GCS. The album JSON is `partial` and carries the row
+under `failed_tracks`.
+
+| Track | Duration (s) | Error |
+|---|---:|---|
+| `ELISSA/Elissa - 2012  As3ad Wa7da/05-te3ebt-minnak` | 303.8 | `meta_status:no-abc` |
+| `FADL_SHAKER/01.Walla Zaman.1998/03-adee-wala-tesalemsh` | 282.3 | `meta_status:no-abc` |
+| `FADL_SHAKER/01.Walla Zaman.1998/08-nazra-wahda` | 303.5 | `meta_status:no-abc` |
+| `FADL_SHAKER/02.Bayya'a El Qeloub.1999/04-zaid-el-malam` | 416.4 | `meta_status:no-abc` |
+| `FADL_SHAKER/05.Hobak Khayal.2001/03-hazzak-ya-albi` | 365.8 | `meta_status:no-abc` |
+| `FADL_SHAKER/08.Hafla 2004/05-hobbak-khayal` | 304.2 | `meta_status:no-abc` |
+| `FADL_SHAKER/08.Hafla 2004/09-la-telomuni` | 244.5 | `meta_status:no-abc` |
+| `FADL_SHAKER/10.Saharni El Shoq.2005/04-tadri-lieh` | 263.3 | `meta_status:no-abc` |
+| `FADL_SHAKER/15.The Best Of (Al Rawae3).2010/01-rouh` | 324.9 | `meta_status:no-abc` |
+
+Total failed audio: **2,808.8 s (0.78 h)**, so **18.41 h of the 19.188 h** has
+an ABC. These are isolated per-track failures; none stopped a session.
+
+Retry one album (re-runs only its `no-abc` tracks):
+
+```bash
+python3 scripts/abc_batch.py --artist ELISSA \
+  --album "Elissa - 2012  As3ad Wa7da" --retry-failed --max-minutes 30
+```
+
+Retry all partial FADL albums:
+
+```bash
+python3 scripts/abc_batch.py --artist FADL_SHAKER --retry-failed --max-minutes 60
+```
+
+If a track returns `no-abc` again, record it as a model/audio limitation. Do
+not hand-edit an ABC.
+
+### Flagged tracks — 3 (`octave_suspect`, not corrected)
+
+| Track | Vocal notes | Coverage |
+|---|---:|---:|
+| `FADL_SHAKER/07.Fadl Shaker.2003/02-el-oyoun-el-soud` | 672 | 0.999 |
+| `FADL_SHAKER/09.Arabian Night.2004/02-oulou-laeyn-el-shames` | 423 | 0.998 |
+| `FADL_SHAKER/15.The Best Of (Al Rawae3).2010/14-ahawel` | 416 | 0.991 |
+
 ## Not measured yet
 
-- Bulk FADL_SHAKER (15 albums) and corpus QC histograms.
+- Corpus QC histograms (tempo/key/range distributions).
 - Unique `audio_sha256` across all 236 tracks (filled at download).
 - Per-track peak VRAM.
 - The §9.2 listening check (12 tracks).
