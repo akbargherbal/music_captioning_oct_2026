@@ -258,7 +258,21 @@
       "rtf": 6.325,
       "completed_at": "2026-10-28T08:25:37Z",
       "model_revision": "b83c3d79a6d98bcffaf8f9ed112c90aa887887bc"
+    },
+    "FADL_SHAKER/12.Allah Alam.2006": {
+      "path": "FADL_SHAKER/abc/12.Allah Alam.2006.json",
+      "status": "done",
+      "track_count": 12,
+      "ok": 12,
+      "flagged": 0,
+      "failed": 0,
+      "missing_track_ids": [],
+      "total_audio_seconds": 3352.0,
+      "total_gpu_seconds": 593.0,
+      "rtf": 5.653,
+      "completed_at": "2026-10-28T08:36:12Z",
+      "model_revision": "b83c3d79a6d98bcffaf8f9ed112c90aa887887bc"
     }
   },
-  "updated_at": "2026-10-28T08:25:37Z"
+  "updated_at": "2026-10-28T08:36:12Z"
 }
