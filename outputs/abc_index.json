@@ -244,7 +244,21 @@
       "rtf": 5.561,
       "completed_at": "2026-10-28T08:23:32Z",
       "model_revision": "b83c3d79a6d98bcffaf8f9ed112c90aa887887bc"
+    },
+    "FADL_SHAKER/11.Fadl Shaker&Yara.Akhedny Ma'ak.2006": {
+      "path": "FADL_SHAKER/abc/11.Fadl Shaker&Yara.Akhedny Ma'ak.2006.json",
+      "status": "done",
+      "track_count": 2,
+      "ok": 2,
+      "flagged": 0,
+      "failed": 0,
+      "missing_track_ids": [],
+      "total_audio_seconds": 629.4,
+      "total_gpu_seconds": 99.5,
+      "rtf": 6.325,
+      "completed_at": "2026-10-28T08:25:37Z",
+      "model_revision": "b83c3d79a6d98bcffaf8f9ed112c90aa887887bc"
     }
   },
-  "updated_at": "2026-10-28T08:23:32Z"
+  "updated_at": "2026-10-28T08:25:37Z"
 }
