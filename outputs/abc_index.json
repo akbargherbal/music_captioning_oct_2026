@@ -13,7 +13,20 @@
       "rtf": 5.294,
       "completed_at": "2026-10-28T04:48:09Z",
       "model_revision": "b83c3d79a6d98bcffaf8f9ed112c90aa887887bc"
+    },
+    "ELISSA/Elissa - 2000 Wakherta Maak": {
+      "path": "ELISSA/abc/Elissa - 2000 Wakherta Maak.json",
+      "status": "done",
+      "track_count": 11,
+      "ok": 11,
+      "flagged": 0,
+      "failed": 0,
+      "total_audio_seconds": 2917.0,
+      "total_gpu_seconds": 585.0,
+      "rtf": 4.986,
+      "completed_at": "2026-10-28T04:58:36Z",
+      "model_revision": "b83c3d79a6d98bcffaf8f9ed112c90aa887887bc"
     }
   },
-  "updated_at": "2026-10-28T04:48:09Z"
+  "updated_at": "2026-10-28T04:58:36Z"
 }
