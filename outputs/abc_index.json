@@ -230,7 +230,21 @@
       "rtf": 5.293,
       "completed_at": "2026-10-28T08:11:59Z",
       "model_revision": "b83c3d79a6d98bcffaf8f9ed112c90aa887887bc"
+    },
+    "FADL_SHAKER/10.Saharni El Shoq.2005": {
+      "path": "FADL_SHAKER/abc/10.Saharni El Shoq.2005.json",
+      "status": "partial",
+      "track_count": 14,
+      "ok": 13,
+      "flagged": 0,
+      "failed": 1,
+      "missing_track_ids": [],
+      "total_audio_seconds": 3597.0,
+      "total_gpu_seconds": 646.8,
+      "rtf": 5.561,
+      "completed_at": "2026-10-28T08:23:32Z",
+      "model_revision": "b83c3d79a6d98bcffaf8f9ed112c90aa887887bc"
     }
   },
-  "updated_at": "2026-10-28T08:11:59Z"
+  "updated_at": "2026-10-28T08:23:32Z"
 }
